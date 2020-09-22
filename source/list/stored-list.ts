@@ -1,5 +1,5 @@
 import { Subscription, Observable, Subscriber, ReplaySubject, from } from 'rxjs';
-import { multicast, refCount, shareReplay } from 'rxjs/operators';
+import { shareReplay } from 'rxjs/operators';
 import { Entity } from '../entity';
 import { Stores, Entities, EntitiesFlow, ListStatus, EntityList } from './types';
 import { asAsync, Keys, PromiseCtr, wait } from '../common'
