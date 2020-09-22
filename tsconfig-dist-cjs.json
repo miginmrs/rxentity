@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "outDir": "dist/cjs",
+    "target": "es2020"
+  },
+  "extends": "./tsconfig-dist.json",
+  "include": [
+    "source/**/*.ts",
+    "test/**/*.ts"
+  ]
+}
