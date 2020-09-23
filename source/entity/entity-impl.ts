@@ -1,5 +1,5 @@
 import { BehaviorSubject } from "rxjs";
-import { KeyOf } from "../common";
+import { Rec } from "..";
 import { EntityAbstract, EntityFieldsFct, EntityFieldsMap } from "./entity-abstract";
 
 /** 
@@ -7,17 +7,17 @@ import { EntityAbstract, EntityFieldsFct, EntityFieldsMap } from "./entity-abstr
  * @template T map of fields output types
  * @template V map of fields input types
  */
-export class EntityImpl<T, V extends T> extends EntityAbstract<T, V> {
-  readonly rx: EntityFieldsFct<T, V> = <k extends KeyOf<T>>(k: k) => {
+export class EntityImpl<K extends string, T extends Rec<K>, V extends T> extends EntityAbstract<K, T, V> {
+  readonly rx: EntityFieldsFct<K, T, V> = <k extends K>(k: k) => {
     return this.rxMap[k] || (this.rxMap[k] = new BehaviorSubject<V[k]>(undefined as any));
   };
-  readonly rxMap: EntityFieldsMap<T, V>;
+  readonly rxMap: EntityFieldsMap<K, T, V>;
   get local() { return this.snapshot; }
   constructor(e: V) {
     super();
-    const rxMap = this.rxMap = {} as EntityFieldsMap<V>;
-    (Object.keys(e) as KeyOf<V>[]).forEach(k => {
-      rxMap[k as keyof V as KeyOf<V>] = new BehaviorSubject(e[k as keyof V as KeyOf<V>])
+    const rxMap = this.rxMap = {} as EntityFieldsMap<K, V>;
+    (Object.keys(e) as K[]).forEach(k => {
+      rxMap[k] = new BehaviorSubject(e[k])
     })
   }
 };

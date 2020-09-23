@@ -5,10 +5,12 @@ import { combine } from '../source/valued-observable';
 
 describe('Entity', () => {
   type User = { name: string, login: string, extra?: string };
+  type ChildUser = { firstName: string, lastName: string, name: number };
+  type keys = keyof User | keyof ChildUser | 'phone';
   const userData: User = { name: 'user', login: 'user@email' };
   const userData2: User = { ...userData, name: 'user2' };
   const userData3: User = { ...userData, name: 'user3' };
-  const userEntity = new EntityImpl<User, User>(userData);
+  const userEntity = new EntityImpl<keys, User, User>(userData);
   describe('Top Level Entity', () => {
     it('should implement local to give the same result as the current data', () => {
       expect(userEntity.local).deep.eq(userData);
@@ -45,8 +47,8 @@ describe('Entity', () => {
     describe('Parent ready', () => {
       type ChildUser = { name: string, phone: string, login?: undefined };
       type AnyUser = User | ChildUser;
-      const child = toEntity(new ChildEntityImpl<AnyUser, User, ChildUser, 'login'>({
-        parent: user, data: { login: undefined }
+      const child = toEntity(new ChildEntityImpl<keys, AnyUser, User, ChildUser, 'login'>({
+        parent: user, data: { login: undefined }, ready: true
       }));
       it('should inherit keys', () => {
         expect($rxMap(child)).keys(Object.keys(userData));
@@ -83,13 +85,11 @@ describe('Entity', () => {
       });
     });
     describe('Parent not ready', () => {
-      type ChildUser = { firstName: string, lastName: string, name: number };
       type AnyUser = User | ChildUser;
-      let parentSetter!: (parent: Entity<User, any>) => void;
+      let parentSetter!: (parent: Entity<keys, User, any>) => void;
       const childData = { firstName: 'fn', lastName: 'ln', name: 13 };
-      const child = toEntity(new ChildEntityImpl<AnyUser, User, ChildUser, never>({
-        parent: undefined, data: childData,
-        parentPromise: { then: (setParent) => parentSetter = setParent }
+      const child = toEntity(new ChildEntityImpl<keys, AnyUser, User, ChildUser, never>({
+        data: childData, parentPromise: { then: (setParent) => parentSetter = setParent }, ready: false,
       }));
       it('should have a consistent snapshot', () => {
         expect(child.name.value).eq(childData.name);
@@ -112,7 +112,7 @@ describe('Entity', () => {
       it('should use new parent values and forget the old parent values', () => {
         type U = { login: string, name: string };
         const parentData = { login: 'login', name: 'n' };
-        const parent = toEntity(new EntityImpl<User, U>(parentData));
+        const parent = toEntity(new EntityImpl<keys, User, U>(parentData));
         getEntity(child).setParent(parent);
         expect($snapshot(child)).deep.eq({ ...childData, ...parentData, extra: undefined });
       });

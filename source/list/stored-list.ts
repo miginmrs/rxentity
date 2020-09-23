@@ -2,44 +2,45 @@ import { Subscription, Observable, Subscriber, ReplaySubject, from } from 'rxjs'
 import { shareReplay } from 'rxjs/operators';
 import { Entity, EntityAbstract } from '../entity';
 import { Stores, Entities, EntitiesFlow, ListStatus, EntityList } from './types';
-import { asAsync, Keys, PromiseCtr, wait } from '../common'
+import { asAsync, Keys, PromiseCtr, TRec, wait } from '../common'
 
-type EntityWithSubscrition<K extends string, T extends Record<K, any>, V extends T> = { entity: Entities<K, T, V>, subscription: Subscription; };
+type EntityWithSubscrition<K extends string, KK extends Record<K, string>, T extends TRec<K, KK>, V extends T> = { entity: Entities<K, KK, T, V>, subscription: Subscription; };
 
-type Params<K extends string, ID extends Pick<any, K>, key extends K, T extends Record<K, any>, V extends T = T, P extends T = never> = {
+type Params<K extends string, ID extends Pick<any, K>, key extends K, KK extends Record<K, string>, T extends TRec<K, KK>, V extends T = T, P extends T = never> = {
   /** 
    * Retrieve function
    * @returns {PromiseLike<{ done?: boolean, data: V[]; }>} `done` is undefined means information is not available, check parent
    */
-  retrieve: (first?: Entities<K, T, any>, last?: Entities<K, T, any>) => PromiseLike<{ done?: boolean, data: V[]; }>,
-  stores: Stores<K, ID, T, P, V>,
+  retrieve: (first?: Entities<K, KK, T, any>, last?: Entities<K, KK, T, any>) => PromiseLike<{ done?: boolean, data: V[]; }>,
+  stores: Stores<K, ID, KK, T, P, V>,
   key: key,
   keyof: <k extends K>(k: k, data: V[k]) => ID[k],
-  keyofEntity: <k extends K>(k: k, data: Entity<T[k], V[k]>) => ID[k],
-  merge: (key: key, list1: EntityWithSubscrition<K, T, V>[], list2: EntityWithSubscrition<K, T, V>[]) => EntityWithSubscrition<K, T, V>[],
-  parent?: EntityList<K, ID, Pick<P, K>, any>,
+  keyofEntity: <k extends K>(k: k, data: Entity<KK[k], T[k], V[k]>) => ID[k],
+  merge: (key: key, list1: EntityWithSubscrition<K, KK, T, V>[], list2: EntityWithSubscrition<K, KK, T, V>[]) => EntityWithSubscrition<K, KK, T, V>[],
+  parent?: EntityList<K, ID, KK, Pick<P, K>, any>,
   promiseCtr: PromiseCtr,
 };
 
-export class StoredList<K extends string, ID extends Pick<any, K>, key extends K, T extends Record<K, any>, V extends T = T, P extends T = never> implements EntityList<K, ID, T, V> {
+export class StoredList<K extends string, ID extends Pick<any, K>, KK extends Record<K, string>,
+  key extends K, T extends TRec<K, KK>, V extends T = T, P extends T = never> implements EntityList<K, ID, KK, T, V> {
   private parentSubsctiption?: Subscription;
-  private retrieve: (first?: Entities<K, T, any>, last?: Entities<K, T, any>, err?: any) => PromiseLike<{ done?: boolean, data: Pick<V, K>[]; }>;
+  private retrieve: (first?: Entities<K, KK, T, any>, last?: Entities<K, KK, T, any>, err?: any) => PromiseLike<{ done?: boolean, data: Pick<V, K>[]; }>;
   /** list is null when `entities` has no subscription */
-  private list: { data: EntityWithSubscrition<K, T, V>[], status: ListStatus; } | null = null;
-  private subscriber: Subscriber<{ list: Entities<K, T, V>[], status: ListStatus; }> | null = null;
+  private list: { data: EntityWithSubscrition<K, KK, T, V>[], status: ListStatus; } | null = null;
+  private subscriber: Subscriber<{ list: Entities<K, KK, T, V>[], status: ListStatus; }> | null = null;
   private donePromises: (PromiseLike<ListStatus> | undefined)[] = [];
   readonly key: key;
-  readonly merge: (key: key, list1: EntityWithSubscrition<K, T, V>[], list2: EntityWithSubscrition<K, T, V>[]) => EntityWithSubscrition<K, T, V>[];
-  readonly parent?: EntityList<K, ID, Pick<P, K>, any>;
+  readonly merge: (key: key, list1: EntityWithSubscrition<K, KK, T, V>[], list2: EntityWithSubscrition<K, KK, T, V>[]) => EntityWithSubscrition<K, KK, T, V>[];
+  readonly parent?: EntityList<K, ID, KK, Pick<P, K>, any>;
   readonly keys: Keys<K>;
-  readonly stores: Stores<K, ID, T, any, V>;
+  readonly stores: Stores<K, ID, KK, T, any, V>;
   readonly keyof: <k extends K>(k: k, data: V[k]) => ID[k];
-  readonly keyofEntity: <k extends K>(k: k, data: Entity<T[k], V[k]>) => ID[k];
+  readonly keyofEntity: <k extends K>(k: k, data: Entity<KK[k], T[k], V[k]>) => ID[k];
   readonly promiseCtr: PromiseCtr;
   /**
    * @param {Params} params 
    */
-  constructor(params: Params<K, ID, key, T, V, P>) {
+  constructor(params: Params<K, ID, key, KK, T, V, P>) {
     const { key, merge, retrieve, parent, keyof, keyofEntity, stores, promiseCtr } = params;
     this.keyof = keyof;
     this.keyofEntity = keyofEntity;
@@ -52,7 +53,7 @@ export class StoredList<K extends string, ID extends Pick<any, K>, key extends K
     this.promiseCtr = promiseCtr;
   }
 
-  add(entity: Entities<K, T, V>) {
+  add(entity: Entities<K, KK, T, V>) {
     const key = this.key;
     const id = this.keyofEntity(key, entity[key]);
     if (this.list === null || this.list.data.find(e => this.keyofEntity(key, e.entity[key]) === id)) return;
@@ -65,7 +66,7 @@ export class StoredList<K extends string, ID extends Pick<any, K>, key extends K
     this.subscriber?.next({ list: this.list.data.map(e => e.entity), status: this.list.status });
   }
 
-  remove(entity: Entities<K, T, V>) {
+  remove(entity: Entities<K, KK, T, V>) {
     if (this.list === null) return;
     const index = this.list.data.findIndex(e => e.entity === entity);
     if (index !== -1) {
@@ -76,11 +77,11 @@ export class StoredList<K extends string, ID extends Pick<any, K>, key extends K
     }
   }
 
-  protected toPromise(flowList: EntitiesFlow<K, T, V>[]): PromiseLike<EntityWithSubscrition<K, T, V>[]> {
+  protected toPromise(flowList: EntitiesFlow<K, KK, T, V>[]): PromiseLike<EntityWithSubscrition<K, KK, T, V>[]> {
     return this.promiseCtr.all(flowList.map(async entitiesFlow => {
       const subscription = new Subscription();
-      const entity = this.keys.asyncMapTo<{ [k in K]: Entity<T[k], V[k]> }>(
-        <k extends K>(k: k) => new this.promiseCtr<Entity<T[k], V[k]>>(
+      const entity = this.keys.asyncMapTo<{ [k in K]: Entity<KK[k], T[k], V[k]> }>(
+        <k extends K>(k: k) => new this.promiseCtr<Entity<KK[k], T[k], V[k]>>(
           res => entitiesFlow[k].observable.subscribe(res)
         ), this.promiseCtr
       );
@@ -95,8 +96,8 @@ export class StoredList<K extends string, ID extends Pick<any, K>, key extends K
   private parentSubscriber = () => new this.promiseCtr<ListStatus>((resolve, reject) => {
     this.parentSubsctiption = this.parent?.entities.subscribe(async parentList => {
       const key = this.key;
-      const flowList: EntitiesFlow<K, T, V>[]
-        = parentList.list.map(e => this.keys.mapTo<EntitiesFlow<K, T, V>>(
+      const flowList: EntitiesFlow<K, KK, T, V>[]
+        = parentList.list.map(e => this.keys.mapTo<EntitiesFlow<K, KK, T, V>>(
           k => this.stores[k].get(this.keyofEntity(k, e[k]))));
       const entitiesSet = new Set(this.list?.data.map(u => u.entity[key]));
       const parentEntities = await this.toPromise(flowList);
@@ -105,7 +106,7 @@ export class StoredList<K extends string, ID extends Pick<any, K>, key extends K
         e => this.keys.mapTo<ID>(k => this.keyofEntity(k, e.entity[k]))
       );
       // console.log('newIds', newIds, this.store);
-      const newEntities: EntityWithSubscrition<K, T, V>[] = await this.toPromise(newIds.map(id => this.keys.mapTo(
+      const newEntities: EntityWithSubscrition<K, KK, T, V>[] = await this.toPromise(newIds.map(id => this.keys.mapTo(
         <k extends K>(k: k) => this.stores[k].get(id[k])
       )));
       // unsubscribe after new subscription made to reuse recently created entities
@@ -118,7 +119,7 @@ export class StoredList<K extends string, ID extends Pick<any, K>, key extends K
     });
   });
 
-  readonly entities = new Observable<{ list: Entities<K, T, V>[], status: ListStatus; }>(subscriber => {
+  readonly entities = new Observable<{ list: Entities<K, KK, T, V>[], status: ListStatus; }>(subscriber => {
     console.log('+++ subscribing', this.stores);
     this.list = { data: [], status: undefined };
     this.subscriber = subscriber;
@@ -133,7 +134,7 @@ export class StoredList<K extends string, ID extends Pick<any, K>, key extends K
     };
   }).pipe(shareReplay({ bufferSize: 1, refCount: true }));
 
-  private _populate(retrieved: Pick<V, K>[]): PromiseLike<EntityWithSubscrition<K, T, V>[]> {
+  private _populate(retrieved: Pick<V, K>[]): PromiseLike<EntityWithSubscrition<K, KK, T, V>[]> {
     const flowList = retrieved.map(p => this.keys.mapTo(k => this.stores[k].get(this.keyof(k, p[k]))));
     const entitiesPromise = this.toPromise(flowList);
     this.keys.keys.forEach(k => this.stores[k].nextBulk(retrieved.map(p => ({ id: this.keyof(k, p[k]), data: p[k] }))));
@@ -162,11 +163,11 @@ export class StoredList<K extends string, ID extends Pick<any, K>, key extends K
     return true;
   }
 
-  exec(n: number, err: any, from?: Entities<K, T, V>, to?: Entities<K, T, V>): PromiseLike<ListStatus> {
+  exec(n: number, err: any, from?: Entities<K, KK, T, V>, to?: Entities<K, KK, T, V>): PromiseLike<ListStatus> {
     return (this.donePromises[n] || (this.donePromises[n] = this._exec(n, err, from, to)));
   }
 
-  private _exec = (n: number, err: any, from?: Entities<K, T, V>, to?: Entities<K, T, V>): PromiseLike<ListStatus> => asAsync(function* () {
+  private _exec = (n: number, err: any, from?: Entities<K, KK, T, V>, to?: Entities<K, KK, T, V>): PromiseLike<ListStatus> => asAsync(function* () {
     let done: PromiseLike<ListStatus>[] = [];
     try {
       if (!this._setDone(n, done, this.list)) return yield* wait(done[0]);

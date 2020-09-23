@@ -1,6 +1,5 @@
-import { Observable } from "rxjs";
+import { Rec } from '..';
 import { ValuedSubject, of } from '../valued-observable';
-import { KeyOf, Merge } from "../common";
 
 
 /** 
@@ -8,49 +7,49 @@ import { KeyOf, Merge } from "../common";
  * @template T map of fields output types
  * @template V map of fields input types
  */
-export abstract class EntityAbstract<T, V extends T> {
+export abstract class EntityAbstract<K extends string, T extends Rec<K>, V extends T> {
   /** `function` that returns the `ValuedSubject` for the givin `field` */
-  abstract readonly rx: EntityFieldsFct<T, V>;
+  abstract readonly rx: EntityFieldsFct<K, T, V>;
   /** `map` that stores the `ValuedSubject` for all the entity `fields` */
-  abstract readonly rxMap: Readonly<EntityFieldsMap<T, V>>;
+  abstract readonly rxMap: Readonly<EntityFieldsMap<K, T, V>>;
   /** a `getter` snapshot for the *local* `fields` */
-  abstract readonly local: Partial<Merge<T>>;
+  abstract readonly local: Partial<Pick<T, K>>;
 
   /** a `getter` snapshot for all the entity `fields` */
   get snapshot() {
-    const snapshot = {} as Merge<T>;
+    const snapshot = {} as Pick<T, K>;
     const rx = this.rx;
-    for (const k of Object.keys(this.rxMap) as KeyOf<T>[]) {
+    for (const k of Object.keys(this.rxMap) as K[]) {
       snapshot[k] = rx(k).value;
     }
     return snapshot;
   }
 
   /** updates some fields of the entity */
-  readonly update = <K extends KeyOf<T>>(e: { [k in K]: V[k] }) => {
+  readonly update = <SK extends K>(e: { [k in SK]: V[k] }) => {
     const rx = this.rx;
-    (Object.keys(e) as K[]).forEach(<k extends K>(k: k) => {
+    (Object.keys(e) as SK[]).forEach(<k extends SK>(k: k) => {
       rx(k).next(e[k]);
     });
   };
 
   /** undo local changes in the entity */
-  readonly rewind = <K extends keyof T>(_field?: K) => { };
+  readonly rewind = <SK extends K>(_field?: SK) => { };
 
   /** define the parent of the entity */
   readonly setParent = () => { };
 
   /** get the number of entities between the actual and the source of the field */
-  readonly levelOf = <K extends KeyOf<T>>(_field: K) => of(0);
+  readonly levelOf = <SK extends K>(_field: SK) => of(0);
 }
 
 /** `function` that associates to each key of an entity a `ValuedSubject` */
-export type EntityFieldsFct<T, V extends T = T> = {
-  <k extends KeyOf<T>>(k: k): ValuedSubject<T[k], V[k]>;
+export type EntityFieldsFct<K extends string, T extends Rec<K>, V extends T = T> = {
+  <k extends K>(k: k): ValuedSubject<T[k], V[k]>;
 };
 
 /** `map` that associates to each key of an entity a `ValuedSubject` */
-export type EntityFieldsMap<T, V extends T = T> = {
-  [k in KeyOf<T>]: ValuedSubject<T[k], V[k]>
+export type EntityFieldsMap<K extends string, T extends Rec<K>, V extends T = T> = {
+  [k in K]: ValuedSubject<T[k], V[k]>
 };
 

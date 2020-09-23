@@ -10,7 +10,7 @@ const one = BigInt(1), two = BigInt(2);
 Bluebird.setScheduler(fn => fn());
 describe('Store', () => {
   type User = { name: string, login: string };
-  const store = new Store<bigint, User>('A', (id, entity) => { }, Bluebird);
+  const store = new Store<bigint, keyof User, User>('A', (id, entity) => { }, Bluebird);
   const storeItems = store['_items'];
   it('should implemenet prepare correctly', async () => {
     const actions: number[] = [];
