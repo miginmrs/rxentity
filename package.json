@@ -1,0 +1,30 @@
+{
+  "name": "rxentity",
+  "version": "0.0.1",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "source": "./source",
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/miginmrs/rxentity.git"
+  },
+  "author": "miginmrs",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/miginmrs/rxentity/issues"
+  },
+  "homepage": "https://github.com/miginmrs/rxentity#readme",
+  "directories": {
+    "lib": "lib"
+  },
+  "peerDependencies": {
+    "rxjs": ">=6.0.0"
+  },
+  "unpkg": "./bundles/rxentity.min.umd.js",
+  "description": "ReactiveX based library for using interactive entities and query-able lists (weakly stored) with multiple layers of accessibility",
+  "keywords": [],
+  "dependencies": {
+    "altern-map": "miginmrs/altern-map#builds"
+  }
+}
