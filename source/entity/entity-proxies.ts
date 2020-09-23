@@ -4,14 +4,23 @@ import { guard, KeyOf } from "../common";
 import { EntityAbstract } from "./entity-abstract";
 import { ValuedSubject } from "../valued-observable";
 
+declare const $entity: unique symbol;
+const entities = new WeakMap<Entity<any, any>, EntityAbstract<any, any>>();
 /** 
  * Proxified entity type
  * @template T map of fields output types
  * @template V map of fields input types
  */
-export type Entity<T, V extends T, E = EntityAbstract<T, V>> = E & {
-  readonly [k in Exclude<KeyOf<T>, keyof E>]: ValuedSubject<T[k], V[k]>
+export type Entity<T, V extends T, E extends EntityAbstract<T, V> = EntityAbstract<T, V>> = { readonly [$entity]: E, } & {
+  readonly [k in KeyOf<T>]: ValuedSubject<T[k], V[k]>
 };
+
+export function getEntity<T, V extends T, E extends EntityAbstract<T, V>>(e: Entity<T, V, E>): E;
+export function getEntity<T, V extends T, E extends EntityAbstract<T, V>>(e: Entity<T, V, E> | undefined): E | undefined;
+export function getEntity<T, V extends T, E extends EntityAbstract<T, V>>(e?: Entity<T, V, E>): E | undefined {
+  if (!e) return;
+  return entities.get(e) as E;
+}
 
 /** 
  * Proxified entity observable, subscribing to it keeps entity in the store
@@ -27,7 +36,7 @@ export type EntityFlow<T, V extends T> = {
 
 /** Extracts the field observable from the entity flow */
 const fieldRX = <T, V extends T, K extends KeyOf<T>>(entity: Observable<Entity<T, V>>, field: K): Observable<T[K]> => {
-  return entity.pipe(alternMap(e => e.rx(field)));
+  return entity.pipe(alternMap(e => getEntity(e).rx(field)));
 };
 
 /** 
@@ -54,9 +63,25 @@ export const entityFlow = <T, V extends T>(
  * Creates a proxified `Entity` from an `EntityAbstract`
  * @see {Entity}
  */
-export const toEntity = <T, V extends T, E extends EntityAbstract<T, V>>(entity: EntityAbstract<T, V> & E) => new Proxy<Entity<T, V, E>>(entity as Entity<T, V, E>, {
-  get(target, key: keyof Entity<T, V, E>) {
-    const k: keyof any = key;
-    return guard<typeof key, keyof E>(key, k in entity) ? target[key] : target.rx(key);
-  }
-});
+export const toEntity = <T, V extends T, E extends EntityAbstract<T, V>>(entity: EntityAbstract<T, V> & E) => {
+  const proxy = new Proxy<Entity<T, V, E>>(Object.prototype as Entity<T, V, E>, {
+    get(_, key: KeyOf<T>) {
+      return entity.rx(key);
+    },
+    ownKeys() {
+      return Object.keys(entity.rxMap)
+    }
+  });
+  entities.set(proxy, entity);
+  return proxy;
+};
+
+
+export const $rx = <T, V extends T, k extends KeyOf<T>>(entity: Entity<T, V>, k: k) => getEntity(entity).rx(k);
+export const $rxMap = <T, V extends T>(entity: Entity<T, V>) => getEntity(entity).rxMap;
+export const $levelOf = <T, V extends T, k extends KeyOf<T>>(entity: Entity<T, V>, k: k) => getEntity(entity).levelOf(k);
+export const $rewind = <T, V extends T, k extends KeyOf<T>>(entity: Entity<T, V>, k?: k) => getEntity(entity).rewind(k);
+export const $update = <T, V extends T, K extends KeyOf<T>>(entity: Entity<T, V>, e: { [k in K]: V[k] }) => getEntity(entity).update(e);
+export const $snapshot = <T, V extends T>(entity: Entity<T, V>) => getEntity(entity).snapshot;
+export const $local = <T, V extends T>(entity: Entity<T, V>) => getEntity(entity).local;
+

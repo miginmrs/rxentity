@@ -1,7 +1,7 @@
 import { BehaviorSubject, identity } from "rxjs";
 import { EntityFieldsFct, EntityFieldsMap, EntityAbstract } from "./entity-abstract";
 import { altern, ValuedSubject, map, of } from "../valued-observable";
-import { Entity } from "./entity-proxies";
+import { Entity, $rx, $rxMap, $levelOf } from "./entity-proxies";
 import { guard, KeyOf, Merge, toKeyOf } from "../common";
 
 /** 
@@ -18,7 +18,7 @@ export class ChildEntityImpl<T, P extends T, V extends T, K extends KeyOf<T>> ex
   private createRx<k extends KeyOf<T>>(k: k): ValuedSubject<T[k], V[k]> {
     const rxSource: ValuedSubject<ValuedSubject<T[k], V[k]>> = this.rxSource(k);
     return Object.assign(altern(rxSource, identity), {
-      next: (x: V[k]) => this._parent && rxSource.value === this._parent.rx(k)
+      next: (x: V[k]) => this._parent && rxSource.value === $rx(this._parent, k)
         ? rxSource.next(new BehaviorSubject<T[k]>(x))
         : rxSource.value.next(x)
     });
@@ -27,7 +27,7 @@ export class ChildEntityImpl<T, P extends T, V extends T, K extends KeyOf<T>> ex
   private rxSource = <k extends KeyOf<T>>(k: k) => {
     return this.rxSourceMap[k] || (
       this.rxSourceMap[k] = new BehaviorSubject<ValuedSubject<T[k], V[k]>>(this._parent
-        ? this._parent.rx(k)
+        ? $rx(this._parent, k)
         : new BehaviorSubject<V[k]>(undefined as any)
       )
     );
@@ -43,7 +43,7 @@ export class ChildEntityImpl<T, P extends T, V extends T, K extends KeyOf<T>> ex
     const rxSourceMap = this.rxSourceMap;
     for (const k of Object.keys(rxSourceMap) as KeyOf<T>[]) {
       const source = rxSourceMap[k].value;
-      if (source !== parent.rxMap[k]) snapshot[k] = source.value;
+      if (source !== $rxMap(parent)[k]) snapshot[k] = source.value;
     }
     return snapshot;
   }
@@ -53,7 +53,7 @@ export class ChildEntityImpl<T, P extends T, V extends T, K extends KeyOf<T>> ex
     parentPromise: { then: (setParent: (parent: Entity<P, any>) => void) => void; };
     parent?: undefined;
   } | {
-    data: { [k in K]: V[k] }; 
+    data: { [k in K]: V[k] };
     parent: Entity<P, any>;
   }) {
     super();
@@ -70,11 +70,11 @@ export class ChildEntityImpl<T, P extends T, V extends T, K extends KeyOf<T>> ex
     } else {
       const { data, parent } = params;
       this._parent = parent;
-      keys = Object.keys(parent.rxMap) as KeyOf<T>[];
+      keys = Object.keys($rxMap(parent)) as KeyOf<T>[];
       keys.forEach(<k extends KeyOf<T>>(k: k) => {
         const next: ValuedSubject<T[k], V[k]> = guard<keyof T, K>(k, k in data)
           ? new BehaviorSubject(data[k] as V[k])
-          : parent.rx(k);
+          : $rx(parent, k);
         rxSourceMap[k] = new BehaviorSubject(next);
       });
     }
@@ -87,15 +87,15 @@ export class ChildEntityImpl<T, P extends T, V extends T, K extends KeyOf<T>> ex
     const rxSourceMap = this.rxSourceMap;
     if (parent) (Object.keys(rxSourceMap) as KeyOf<T>[]).forEach(<k extends KeyOf<T>>(k: k) => {
       if (rxSourceMap[k].value === undefined) {
-        rxSourceMap[k].next(parent.rx(k));
+        rxSourceMap[k].next($rx(parent, k));
       }
     });
     if (!oldParent) return;
-    (Object.keys(oldParent.rxMap) as KeyOf<T>[]).forEach(<k extends KeyOf<T>>(k: k) => {
-      if (rxSourceMap[k]?.value === oldParent.rxMap[k]) {
-        if (parent) rxSourceMap[k].next(parent.rx(k));
+    (Object.keys($rxMap(oldParent)) as KeyOf<T>[]).forEach(<k extends KeyOf<T>>(k: k) => {
+      if (rxSourceMap[k]?.value === $rxMap(oldParent)[k]) {
+        if (parent) rxSourceMap[k].next($rx(parent, k));
         else {
-          rxSourceMap[k].next(new BehaviorSubject<T[k]>(oldParent.rxMap[k].value));
+          rxSourceMap[k].next(new BehaviorSubject<T[k]>($rxMap(oldParent)[k].value));
         }
       }
     });
@@ -105,11 +105,11 @@ export class ChildEntityImpl<T, P extends T, V extends T, K extends KeyOf<T>> ex
     const parent = this._parent;
     if (!parent) return;
     (field ? [toKeyOf<T>(field)] : Object.keys(this.rxSourceMap) as KeyOf<T>[]).forEach(
-      field => this.rxSource(field).next(parent.rx(field))
+      field => this.rxSource(field).next($rx(parent, field))
     );
   };
 
-  readonly levelOf = <K extends KeyOf<T>>(field: K) => altern(this.rxSource(field), 
-    src => src === this._parent?.rxMap[field] ? map(this._parent.levelOf(field), l => l + 1) : of(0)
+  readonly levelOf = <K extends KeyOf<T>>(field: K) => altern(this.rxSource(field),
+    src => src as unknown === this._parent?.[field] ? map($levelOf(this._parent!, field), l => l + 1) : of(0)
   );
 }

@@ -2,6 +2,7 @@ import { Promise as Bluebird, resolve } from "bluebird";
 import { assert, expect } from "chai";
 import { Subject, Subscription } from "rxjs";
 import { take } from "rxjs/operators";
+import { $snapshot } from "../source/entity";
 import { Store } from "../source/store"
 
 const one = BigInt(1), two = BigInt(2);
@@ -54,7 +55,7 @@ describe('Store', () => {
   });
   it('should implemenet changeId correctly', async () => {
     const stack: User[] = []
-    const subscription = store.prepare(one, () => Promise.reject(null)).subscribe(x=>stack.push(x.snapshot));
+    const subscription = store.prepare(one, () => Promise.reject(null)).subscribe(x=>stack.push($snapshot(x)));
     const subject = new Subject<void>(), step1 = subject.pipe(take(1)).toPromise();
     const u = store.prepare(one, (id) => {
       expect(id).eq(two);

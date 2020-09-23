@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { combineLatest } from 'rxjs';
-import { ChildEntityImpl, EntityImpl, toEntity, Entity } from '../source/entity';
+import { ChildEntityImpl, EntityImpl, toEntity, Entity, $snapshot, $levelOf, $local, $rxMap, $rewind, getEntity } from '../source/entity';
 import { combine } from '../source/valued-observable';
 
 describe('Entity', () => {
@@ -37,12 +37,9 @@ describe('Entity', () => {
     it('should proxify fields', () => {
       expect(user.name.value).eq(userData3.name);
       user.name.next(userData2.name);
-      expect(user.snapshot).deep.eq(userData2);
+      expect($snapshot(user)).deep.eq(userData2);
       expect(userEntity.snapshot).deep.eq(userData2);
     })
-    it('should keep the target prototype', () => {
-      expect(user instanceof EntityImpl).eq(true);
-    });
   });
   describe('Child Entity', () => {
     describe('Parent ready', () => {
@@ -52,27 +49,27 @@ describe('Entity', () => {
         parent: user, data: { login: undefined }
       }));
       it('should inherit keys', () => {
-        expect(child.rxMap).keys(Object.keys(userData));
+        expect($rxMap(child)).keys(Object.keys(userData));
       });
       it('should present the new values', () => {
-        expect(child.snapshot).deep.eq({ name: userData2.name, login: undefined });
+        expect($snapshot(child)).deep.eq({ name: userData2.name, login: undefined });
       });
       it('should implement levelOf to give the distance to the source subject', () => {
-        expect(combine([child.levelOf('name'), child.levelOf('login')]).value).deep.eq([1, 0]);
+        expect(combine([$levelOf(child, 'name'), $levelOf(child, 'login')]).value).deep.eq([1, 0]);
       });
       it('should depend on parent values but not the overridden ones', () => {
         user.name.next(userData.name);
         user.login.next(userData.login);
-        expect(child.snapshot).deep.eq({ name: userData.name, login: undefined });
+        expect($snapshot(child)).deep.eq({ name: userData.name, login: undefined });
       });
       it('should implement local to give only new values', () => {
-        expect(child.local).deep.eq({ login: undefined });
+        expect($local(child)).deep.eq({ login: undefined });
       });
       it('should implement rewind to go back to parent value', () => {
-        child.rewind();
-        expect(child.local).deep.eq({});
-        expect(child.snapshot).deep.eq(userData);
-        expect(user.snapshot).deep.eq(userData);
+        $rewind(child);
+        expect($local(child)).deep.eq({});
+        expect($snapshot(child)).deep.eq(userData);
+        expect($snapshot(user)).deep.eq(userData);
       });
       it('should limit next of child fields to child V type', () => {
         type assertType<T, V extends T> = Exclude<T, V>;
@@ -97,27 +94,27 @@ describe('Entity', () => {
       it('should have a consistent snapshot', () => {
         expect(child.name.value).eq(childData.name);
         expect(child.firstName.value).eq(childData.firstName);
-        expect(child.snapshot).deep.eq(childData);
-        child.rewind('name');
+        expect($snapshot(child)).deep.eq(childData);
+        $rewind(child, 'name');
         expect(child.name.value).deep.eq(childData.name);
       });
       it('should inherit parent values once it is ready', () => {
         parentSetter(user);
-        expect(child.snapshot).deep.eq(childData);
-        child.rewind('name');
-        expect(child.snapshot).deep.eq({ ...childData, name: userData.name });
+        expect($snapshot(child)).deep.eq(childData);
+        $rewind(child, 'name');
+        expect($snapshot(child)).deep.eq({ ...childData, name: userData.name });
         expect(child.login.value).eq(userData.login);
         user.extra.next('extra');
-        expect(child.snapshot).deep.eq({ ...childData, name: userData.name, login: userData.login });
+        expect($snapshot(child)).deep.eq({ ...childData, name: userData.name, login: userData.login });
         expect(child.extra.value).eq('extra');
-        expect(child.snapshot).deep.eq({ ...childData, name: userData.name, login: userData.login, extra: 'extra' });
+        expect($snapshot(child)).deep.eq({ ...childData, name: userData.name, login: userData.login, extra: 'extra' });
       });
       it('should use new parent values and forget the old parent values', () => {
         type U = { login: string, name: string };
         const parentData = { login: 'login', name: 'n' };
         const parent = toEntity(new EntityImpl<User, U>(parentData));
-        child.setParent(parent);
-        expect(child.snapshot).deep.eq({ ...childData, ...parentData, extra: undefined });
+        getEntity(child).setParent(parent);
+        expect($snapshot(child)).deep.eq({ ...childData, ...parentData, extra: undefined });
       });
     });
   });

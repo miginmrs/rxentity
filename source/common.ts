@@ -1,4 +1,4 @@
-export type KeyOf<T> = T extends any ? keyof T : never;
+export type KeyOf<T> = (T extends any ? keyof T : never) & string;
 export type Merge<T, K extends KeyOf<T> = KeyOf<T>> = { [k in K]: T[k] };
 export type PromiseCtr = {
   new <T>(executor: (resolve: (value?: T | PromiseLike<T>) => void, reject: (reason?: any) => void) => void): PromiseLike<T>;

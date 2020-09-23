@@ -1,6 +1,6 @@
 import { Observable, TeardownLogic, Subscriber, Subscription, Subject } from 'rxjs';
 import { KeyOf, PromiseCtr } from './common';
-import { EntityFlow, Entity, ChildEntityImpl, EntityImpl, entityFlow, toEntity, EntityAbstract } from "./entity";
+import { EntityFlow, Entity, ChildEntityImpl, EntityImpl, entityFlow, toEntity, EntityAbstract, $rewind, $update, getEntity } from "./entity";
 
 interface IStore<K, T, V extends T> {
   get(id: K, skipCurrent?: true): EntityFlow<T, V>;
@@ -24,7 +24,7 @@ export class Store<K, T, P extends T = never, V extends T = T> implements IStore
 
   rewind(id: K) {
     const item = this._items.get(id);
-    item?.entity?.rewind();
+    getEntity(item?.entity)?.rewind();
   }
   /**
    * Ensures the existance of an entity with a givin id using a givin construction logic
@@ -73,13 +73,13 @@ export class Store<K, T, P extends T = never, V extends T = T> implements IStore
     const item = this._items.get(id);
     if (!item) return;
     if (item.entity) {
-      item.entity.update(data);
+      $update(item.entity, data);
       item.ready = true;
       return false;
     } else {
       if (this.parent) {
         const parentFlow = this.parent.get(id);
-        item.entity = toEntity<T, V, EntityAbstract<T, V>>(new ChildEntityImpl<T, P, V, KeyOf<T>>({
+        item.entity = toEntity<T, V, ChildEntityImpl<T, P, V, KeyOf<T>>>(new ChildEntityImpl<T, P, V, KeyOf<T>>({
           data, parentPromise: {
             then: (setParent: (parent: Entity<P, any>) => void) => {
               const subscription = parentFlow.observable.subscribe(parent => setParent(parent));
@@ -89,7 +89,7 @@ export class Store<K, T, P extends T = never, V extends T = T> implements IStore
           }
         }));
       } else {
-        item.entity = toEntity(new EntityImpl<T, V>(data));
+        item.entity = toEntity<T, V, EntityImpl<T, V>>(new EntityImpl<T, V>(data));
       }
       const entity: Entity<T, V> = item.entity;
       item.ready = true;
@@ -106,7 +106,7 @@ export class Store<K, T, P extends T = never, V extends T = T> implements IStore
     item.id = newId;
     this._items.delete(oldId);
     this._items.set(newId, item);
-    item.entity?.setParent();
+    getEntity(item.entity)?.setParent();
     item.parentSubscription?.unsubscribe();
     if (this.parent) {
       const parentFlow = this.parent.get(newId);
@@ -123,7 +123,7 @@ export class Store<K, T, P extends T = never, V extends T = T> implements IStore
   // remove(id: K); use a `deleted` field instead
 
   update<M extends KeyOf<T>>(id: K, data: Pick<V, M>) {
-    this._items.get(id)?.entity?.update(data);
+    getEntity(this._items.get(id)?.entity)?.update(data);
   }
 
   private item(id: K, observer: Subscriber<Entity<T, V>>) {
@@ -144,7 +144,8 @@ export class Store<K, T, P extends T = never, V extends T = T> implements IStore
           let run = !skipCurrent;
           // this._entities.set will not be runned when .next is invoked because it will be already unsubscribed
           item.parentSubscription = this.parent.get(id).observable.subscribe(parent => {
-            item.entity = toEntity<T, V, EntityAbstract<T, V>>(new ChildEntityImpl<T, P, V, never>({ data: {}, parent }));
+            item.entity = toEntity<T, V, ChildEntityImpl<T, P, V, never>>(
+              new ChildEntityImpl<T, P, V, never>({ data: {}, parent }));
             this.emptyInsersions.next(item.id);
             if (run) observers.forEach(subscriber => subscriber.next(item.entity));
           });
