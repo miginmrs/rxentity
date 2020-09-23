@@ -1,8 +1,6 @@
-import { BehaviorSubject, identity, of } from "rxjs";
-import { alternMap } from "altern-map";
-import { map } from "rxjs/operators";
+import { BehaviorSubject, identity } from "rxjs";
 import { EntityFieldsFct, EntityFieldsMap, EntityAbstract } from "./entity-abstract";
-import { ValuedSubject, current } from "../valued-observable";
+import { altern, ValuedSubject, map, of } from "../valued-observable";
 import { Entity } from "./entity-proxies";
 import { guard, KeyOf, Merge, toKeyOf } from "../common";
 
@@ -19,10 +17,10 @@ export class ChildEntityImpl<T, P extends T, V extends T, K extends KeyOf<T>> ex
   };
   private createRx<k extends KeyOf<T>>(k: k): ValuedSubject<T[k], V[k]> {
     const rxSource: ValuedSubject<ValuedSubject<T[k], V[k]>> = this.rxSource(k);
-    return Object.assign(rxSource.pipe(alternMap(identity)), {
-      next: (x: V[k]) => this._parent && current(rxSource) === this._parent.rx(k)
+    return Object.assign(altern(rxSource, identity), {
+      next: (x: V[k]) => this._parent && rxSource.value === this._parent.rx(k)
         ? rxSource.next(new BehaviorSubject<T[k]>(x))
-        : current(rxSource).next(x)
+        : rxSource.value.next(x)
     });
   }
   readonly rxMap: EntityFieldsMap<T, V>;
@@ -45,7 +43,7 @@ export class ChildEntityImpl<T, P extends T, V extends T, K extends KeyOf<T>> ex
     const rxSourceMap = this.rxSourceMap;
     for (const k of Object.keys(rxSourceMap) as KeyOf<T>[]) {
       const source = rxSourceMap[k].value;
-      if (source !== parent.rxMap[k]) snapshot[k] = current(source);
+      if (source !== parent.rxMap[k]) snapshot[k] = source.value;
     }
     return snapshot;
   }
@@ -97,7 +95,7 @@ export class ChildEntityImpl<T, P extends T, V extends T, K extends KeyOf<T>> ex
       if (rxSourceMap[k]?.value === oldParent.rxMap[k]) {
         if (parent) rxSourceMap[k].next(parent.rx(k));
         else {
-          rxSourceMap[k].next(new BehaviorSubject<T[k]>(current(oldParent.rxMap[k])));
+          rxSourceMap[k].next(new BehaviorSubject<T[k]>(oldParent.rxMap[k].value));
         }
       }
     });
@@ -111,7 +109,7 @@ export class ChildEntityImpl<T, P extends T, V extends T, K extends KeyOf<T>> ex
     );
   };
 
-  readonly levelOf = <K extends KeyOf<T>>(field: K) => this.rxSource(field).pipe(alternMap(
-    src => src === this._parent?.rxMap[field] ? this._parent.levelOf(field).pipe(map(l => l + 1)) : of(0)
-  ));
+  readonly levelOf = <K extends KeyOf<T>>(field: K) => altern(this.rxSource(field), 
+    src => src === this._parent?.rxMap[field] ? map(this._parent.levelOf(field), l => l + 1) : of(0)
+  );
 }

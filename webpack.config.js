@@ -4,12 +4,12 @@ const path = require("path");
 const webpack = require("webpack");
 
 module.exports = env => {
-  let filename = "rxentity.umd.js", devtool = {devtool: "source-map"};
+  let filename = "rxentity.umd.js", devtool = { devtool: "source-map" };
   let mode = "development";
   if (env && env.production) {
     filename = "rxentity.min.umd.js";
     mode = "production";
-    devtool= {};
+    devtool = {};
   }
   return {
     ...devtool,
@@ -37,10 +37,8 @@ module.exports = env => {
           use: {
             loader: "ts-loader",
             options: {
-              compilerOptions: {
-                declaration: false
-              },
-              configFile: "tsconfig-dist-cjs.json"
+              compilerOptions: { declaration: false },
+              configFile: "tsconfig-dist-webpack.json"
             }
           }
         }
@@ -48,7 +46,7 @@ module.exports = env => {
     },
     output: {
       filename,
-      library: "rxAsync",
+      library: "rxentity",
       libraryTarget: "umd",
       path: path.resolve(__dirname, "./bundles")
     },

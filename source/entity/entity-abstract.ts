@@ -1,6 +1,5 @@
-import { Observable, of } from "rxjs";
-import { current } from "../valued-observable";
-import type { ValuedSubject } from '../valued-observable';
+import { Observable } from "rxjs";
+import { ValuedSubject, of } from '../valued-observable';
 import { KeyOf, Merge } from "../common";
 
 
@@ -22,7 +21,7 @@ export abstract class EntityAbstract<T, V extends T> {
     const snapshot = {} as Merge<T>;
     const rx = this.rx;
     for (const k of Object.keys(this.rxMap) as KeyOf<T>[]) {
-      snapshot[k] = current(rx(k));
+      snapshot[k] = rx(k).value;
     }
     return snapshot;
   }

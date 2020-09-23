@@ -2,9 +2,12 @@ if [ `git branch --show-current` != 'master' ]; then
   echo 'you are not in master branch' >&2
   exit -1
 fi
-yarn dist
+yarn dist || exit -1
+yarn test:js || exit -1
 rm -rf temp/*
-mv dist temp/
+mkdir temp/dist
+mv dist/cjs/source temp/dist/cjs
+mv dist/esm temp/dist/esm
 mv bundles temp/
 git checkout builds || exit -1
 rm -rf bundles dist
