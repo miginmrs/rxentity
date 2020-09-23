@@ -1,13 +1,13 @@
-import { KeyOf } from "../common";
+import { Rec } from "..";
 import { EntityAbstract, EntityFieldsFct, EntityFieldsMap } from "./entity-abstract";
 /**
  * Top level entity class
  * @template T map of fields output types
  * @template V map of fields input types
  */
-export declare class EntityImpl<T, V extends T> extends EntityAbstract<T, V> {
-    readonly rx: EntityFieldsFct<T, V>;
-    readonly rxMap: EntityFieldsMap<T, V>;
-    get local(): import("../common").Merge<T, KeyOf<T>>;
+export declare class EntityImpl<K extends string, T extends Rec<K>, V extends T> extends EntityAbstract<K, T, V> {
+    readonly rx: EntityFieldsFct<K, T, V>;
+    readonly rxMap: EntityFieldsMap<K, T, V>;
+    get local(): Pick<T, K>;
     constructor(e: V);
 }

@@ -1,35 +1,36 @@
 import { EntityFieldsFct, EntityFieldsMap, EntityAbstract } from "./entity-abstract";
 import { Entity } from "./entity-proxies";
-import { KeyOf, Merge } from "../common";
+import { Rec } from "../common";
 /**
  * Child entity class
  * @template T map of fields output types
  * @template P map of fields parent output types
  * @template V map of fields input types
- * @template K union of initial field keys
+ * @template I union of initial field keys
  */
-export declare class ChildEntityImpl<T, P extends T, V extends T, K extends KeyOf<T>> extends EntityAbstract<T, V> {
-    readonly rx: EntityFieldsFct<T, V>;
+export declare class ChildEntityImpl<K extends string, T extends Rec<K>, P extends T, V extends T, I extends K, PE extends Entity<K, P, any> = Entity<K, P, any>> extends EntityAbstract<K, T, V> {
+    readonly rx: EntityFieldsFct<K, T, V>;
     private createRx;
-    readonly rxMap: EntityFieldsMap<T, V>;
+    readonly rxMap: EntityFieldsMap<K, T, V>;
     private rxSource;
     private rxSourceMap;
     private _parent;
-    get parent(): Entity<P, any, EntityAbstract<P, any>> | undefined;
-    get local(): Partial<Merge<T, KeyOf<T>>>;
+    get parent(): PE | undefined;
+    get local(): Partial<Pick<T, K>>;
     constructor(params: {
         data: V;
         parentPromise: {
-            then: (setParent: (parent: Entity<P, any>) => void) => void;
+            then: (setParent: (parent: PE) => void) => void;
         };
-        parent?: undefined;
+        ready: false;
     } | {
         data: {
-            [k in K]: V[k];
+            [k in I]: V[k];
         };
-        parent: Entity<P, any>;
+        parent: PE;
+        ready: true;
     });
-    setParent: (parent?: Entity<P, any, EntityAbstract<P, any>> | undefined) => void;
-    readonly rewind: <K_1 extends keyof T>(field?: K_1 | undefined) => void;
-    readonly levelOf: <K_1 extends KeyOf<T>>(field: K_1) => import("../valued-observable").ValuedObservable<number>;
+    setParent: (parent?: PE | undefined) => void;
+    readonly rewind: <SK extends K>(field?: SK | undefined) => void;
+    readonly levelOf: <SK extends K>(field: SK) => import("../valued-observable").ValuedObservable<number>;
 }

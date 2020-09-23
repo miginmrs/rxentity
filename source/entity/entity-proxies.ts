@@ -1,33 +1,42 @@
 import { alternMap } from "altern-map";
 import { Observable } from "rxjs";
-import { guard, KeyOf } from "../common";
 import { EntityAbstract } from "./entity-abstract";
 import { ValuedSubject } from "../valued-observable";
+import { Rec } from "../common";
 
+declare const $entity: unique symbol;
+const entities = new WeakMap<Entity<any, any, any>, EntityAbstract<any, any, any>>();
 /** 
  * Proxified entity type
  * @template T map of fields output types
  * @template V map of fields input types
  */
-export type Entity<T, V extends T, E = EntityAbstract<T, V>> = E & {
-  readonly [k in Exclude<KeyOf<T>, keyof E>]: ValuedSubject<T[k], V[k]>
+export type Entity<K extends string, T extends Rec<K>, V extends T, E extends EntityAbstract<K, T, V> = EntityAbstract<K, T, V>> = { readonly [$entity]: E, } & {
+  readonly [k in K]: ValuedSubject<T[k], V[k]>
 };
+
+export function getEntity<K extends string, T extends Rec<K>, V extends T, E extends EntityAbstract<K, T, V>>(e: Entity<K, T, V, E>): E;
+export function getEntity<K extends string, T extends Rec<K>, V extends T, E extends EntityAbstract<K, T, V>>(e: Entity<K, T, V, E> | undefined): E | undefined;
+export function getEntity<K extends string, T extends Rec<K>, V extends T, E extends EntityAbstract<K, T, V>>(e?: Entity<K, T, V, E>): E | undefined {
+  if (!e) return;
+  return entities.get(e) as E;
+}
 
 /** 
  * Proxified entity observable, subscribing to it keeps entity in the store
  * @template T map of fields output types
  * @template V map of fields input types
  */
-export type EntityFlow<T, V extends T> = {
-  readonly [k in Exclude<KeyOf<T>, 'observable' | 'field' | 'unsubscribe'>]: Observable<T[k]>;
+export type EntityFlow<K extends string, T extends Rec<K>, V extends T, E extends EntityAbstract<K, T, V> = EntityAbstract<K, T, V>> = {
+  readonly [k in Exclude<K, 'observable' | 'field' | 'unsubscribe'>]: Observable<T[k]>;
 } & {
-  observable: Observable<Entity<T, V>>;
-  field: { readonly [k in KeyOf<T>]: Observable<T[k]> };
+  observable: Observable<Entity<K, T, V, E>>;
+  field: { readonly [k in K]: Observable<T[k]> };
 };
 
 /** Extracts the field observable from the entity flow */
-const fieldRX = <T, V extends T, K extends KeyOf<T>>(entity: Observable<Entity<T, V>>, field: K): Observable<T[K]> => {
-  return entity.pipe(alternMap(e => e.rx(field)));
+const fieldRX = <K extends string, T extends Rec<K>, V extends T, k extends K>(entity: Observable<Entity<K, T, V>>, field: k): Observable<T[k]> => {
+  return entity.pipe(alternMap(e => getEntity(e).rx(field)));
 };
 
 /** 
@@ -36,14 +45,14 @@ const fieldRX = <T, V extends T, K extends KeyOf<T>>(entity: Observable<Entity<T
  * @param {Record<Observable>} [field] optional external impl of the field observables proxy
  * @see {EntityFlow}
  */
-export const entityFlow = <T, V extends T>(
-  observable: Observable<Entity<T, V>>,
-  field?: EntityFlow<T, V>['field']
-): EntityFlow<T, V> => new Proxy({} as any as EntityFlow<T, V>, {
-  get(_target: EntityFlow<T, V>, key: keyof EntityFlow<T, V>) {
+export const entityFlow = <K extends string, T extends Rec<K>, V extends T, E extends EntityAbstract<K, T, V> = EntityAbstract<K, T, V>>(
+  observable: Observable<Entity<K, T, V, E>>,
+  field?: EntityFlow<K, T, V, E>['field']
+): EntityFlow<K, T, V, E> => new Proxy({} as any as EntityFlow<K, T, V, E>, {
+  get(_target: EntityFlow<K, T, V, E>, key: keyof EntityFlow<K, T, V, E>) {
     if (key === 'observable') return observable;
-    if (key === 'field') return field || (field = new Proxy({} as EntityFlow<T, V>['field'], {
-      get<k extends KeyOf<T>>(_: EntityFlow<T, V>['field'], k: k) { return fieldRX(observable, k); }
+    if (key === 'field') return field || (field = new Proxy({} as EntityFlow<K, T, V>['field'], {
+      get<k extends K>(_: EntityFlow<K, T, V>['field'], k: k) { return fieldRX(observable, k); }
     }));
     return fieldRX(observable, key);
   }
@@ -54,9 +63,25 @@ export const entityFlow = <T, V extends T>(
  * Creates a proxified `Entity` from an `EntityAbstract`
  * @see {Entity}
  */
-export const toEntity = <T, V extends T, E extends EntityAbstract<T, V>>(entity: EntityAbstract<T, V> & E) => new Proxy<Entity<T, V, E>>(entity as Entity<T, V, E>, {
-  get(target, key: keyof Entity<T, V, E>) {
-    const k: keyof any = key;
-    return guard<typeof key, keyof E>(key, k in entity) ? target[key] : target.rx(key);
-  }
-});
+export const toEntity = <K extends string, T extends Rec<K>, V extends T, E extends EntityAbstract<K, T, V>>(entity: EntityAbstract<K, T, V> & E) => {
+  const proxy = new Proxy<Entity<K, T, V, E>>(Object.prototype as Entity<K, T, V, E>, {
+    get(_, key: K) {
+      return entity.rx(key);
+    },
+    ownKeys() {
+      return Object.keys(entity.rxMap)
+    }
+  });
+  entities.set(proxy, entity);
+  return proxy;
+};
+
+
+export const $rx = <K extends string, T extends Rec<K>, V extends T, k extends K>(entity: Entity<K, T, V>, k: k) => getEntity(entity).rx(k);
+export const $rxMap = <K extends string, T extends Rec<K>, V extends T>(entity: Entity<K, T, V>) => getEntity(entity).rxMap;
+export const $levelOf = <K extends string, T extends Rec<K>, V extends T, k extends K>(entity: Entity<K, T, V>, k: k) => getEntity(entity).levelOf(k);
+export const $rewind = <K extends string, T extends Rec<K>, V extends T, k extends K>(entity: Entity<K, T, V>, k?: k) => getEntity(entity).rewind(k);
+export const $update = <K extends string, T extends Rec<K>, V extends T, SK extends K>(entity: Entity<K, T, V>, e: { [k in SK]: V[k] }) => getEntity(entity).update(e);
+export const $snapshot = <K extends string, T extends Rec<K>, V extends T>(entity: Entity<K, T, V>) => getEntity(entity).snapshot;
+export const $local = <K extends string, T extends Rec<K>, V extends T>(entity: Entity<K, T, V>) => getEntity(entity).local;
+

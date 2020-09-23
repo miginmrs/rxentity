@@ -1,5 +1,6 @@
-export type KeyOf<T> = T extends any ? keyof T : never;
-export type Merge<T, K extends KeyOf<T> = KeyOf<T>> = { [k in K]: T[k] };
+export type Rec<K extends keyof any> = Partial<Record<K, any>>;
+export type TRec<K extends keyof any, KK extends Record<K, keyof any>> = { [k in K]: Record<KK[k], any> };
+
 export type PromiseCtr = {
   new <T>(executor: (resolve: (value?: T | PromiseLike<T>) => void, reject: (reason?: any) => void) => void): PromiseLike<T>;
   all<T>(values: readonly (T | PromiseLike<T>)[]): PromiseLike<T[]>,
@@ -28,7 +29,6 @@ export function asAsync<T extends any[], R, U = void, N = any>(f: (this: U, ...a
 
 
 export const guard = <T, V extends T>(x: T, cond: boolean): x is V => cond;
-export const toKeyOf = <V>(x: keyof V) => x as KeyOf<V>;
 export class Keys<K extends string | symbol | number> {
   readonly keys: K[];
   private _!: { [k in K]: null };

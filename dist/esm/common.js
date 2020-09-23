@@ -14,7 +14,6 @@ export function asAsync(f, promiseCtr, thisArg) {
     return (...args) => runit(f.call(thisArg, ...args), promiseCtr);
 }
 export const guard = (x, cond) => cond;
-export const toKeyOf = (x) => x;
 export class Keys {
     constructor(o) { this.keys = Object.keys(o) /*.sort()*/; }
     mapTo(mapper) {

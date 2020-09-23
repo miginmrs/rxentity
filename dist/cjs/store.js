@@ -15,7 +15,7 @@ class Store {
     }
     rewind(id) {
         const item = this._items.get(id);
-        item?.entity?.rewind();
+        entity_1.getEntity(item?.entity)?.rewind();
     }
     /**
      * Ensures the existance of an entity with a givin id using a givin construction logic
@@ -63,7 +63,7 @@ class Store {
         if (!item)
             return;
         if (item.entity) {
-            item.entity.update(data);
+            entity_1.$update(item.entity, data);
             item.ready = true;
             return false;
         }
@@ -71,7 +71,7 @@ class Store {
             if (this.parent) {
                 const parentFlow = this.parent.get(id);
                 item.entity = entity_1.toEntity(new entity_1.ChildEntityImpl({
-                    data,
+                    data, ready: false,
                     parentPromise: {
                         then: (setParent) => {
                             const subscription = parentFlow.observable.subscribe(parent => setParent(parent));
@@ -100,7 +100,7 @@ class Store {
         item.id = newId;
         this._items.delete(oldId);
         this._items.set(newId, item);
-        item.entity?.setParent();
+        entity_1.getEntity(item.entity)?.setParent();
         item.parentSubscription?.unsubscribe();
         if (this.parent) {
             const parentFlow = this.parent.get(newId);
@@ -115,7 +115,7 @@ class Store {
     }
     // remove(id: K); use a `deleted` field instead
     update(id, data) {
-        this._items.get(id)?.entity?.update(data);
+        entity_1.getEntity(this._items.get(id)?.entity)?.update(data);
     }
     item(id, observer) {
         let item = this._items.get(id);
@@ -138,7 +138,7 @@ class Store {
                     let run = !skipCurrent;
                     // this._entities.set will not be runned when .next is invoked because it will be already unsubscribed
                     item.parentSubscription = this.parent.get(id).observable.subscribe(parent => {
-                        item.entity = entity_1.toEntity(new entity_1.ChildEntityImpl({ data: {}, parent }));
+                        item.entity = entity_1.toEntity(new entity_1.ChildEntityImpl({ data: {}, parent, ready: true }));
                         this.emptyInsersions.next(item.id);
                         if (run)
                             observers.forEach(subscriber => subscriber.next(item.entity));

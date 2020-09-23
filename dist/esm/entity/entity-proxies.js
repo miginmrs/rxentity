@@ -1,8 +1,13 @@
 import { alternMap } from "altern-map";
-import { guard } from "../common";
+const entities = new WeakMap();
+export function getEntity(e) {
+    if (!e)
+        return;
+    return entities.get(e);
+}
 /** Extracts the field observable from the entity flow */
 const fieldRX = (entity, field) => {
-    return entity.pipe(alternMap(e => e.rx(field)));
+    return entity.pipe(alternMap(e => getEntity(e).rx(field)));
 };
 /**
  * Creates an `EntityFlow` from an observable
@@ -25,10 +30,23 @@ export const entityFlow = (observable, field) => new Proxy({}, {
  * Creates a proxified `Entity` from an `EntityAbstract`
  * @see {Entity}
  */
-export const toEntity = (entity) => new Proxy(entity, {
-    get(target, key) {
-        const k = key;
-        return guard(key, k in entity) ? target[key] : target.rx(key);
-    }
-});
+export const toEntity = (entity) => {
+    const proxy = new Proxy(Object.prototype, {
+        get(_, key) {
+            return entity.rx(key);
+        },
+        ownKeys() {
+            return Object.keys(entity.rxMap);
+        }
+    });
+    entities.set(proxy, entity);
+    return proxy;
+};
+export const $rx = (entity, k) => getEntity(entity).rx(k);
+export const $rxMap = (entity) => getEntity(entity).rxMap;
+export const $levelOf = (entity, k) => getEntity(entity).levelOf(k);
+export const $rewind = (entity, k) => getEntity(entity).rewind(k);
+export const $update = (entity, e) => getEntity(entity).update(e);
+export const $snapshot = (entity) => getEntity(entity).snapshot;
+export const $local = (entity) => getEntity(entity).local;
 //# sourceMappingURL=entity-proxies.js.map

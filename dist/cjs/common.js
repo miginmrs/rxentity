@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Keys = exports.toKeyOf = exports.guard = exports.asAsync = exports.wait = exports.runit = void 0;
+exports.Keys = exports.guard = exports.asAsync = exports.wait = exports.runit = void 0;
 exports.runit = (gen, promiseCtr) => {
     const runThen = (...args) => {
         const v = args.length ? gen.next(args[0]) : gen.next();
@@ -19,7 +19,6 @@ function asAsync(f, promiseCtr, thisArg) {
 }
 exports.asAsync = asAsync;
 exports.guard = (x, cond) => cond;
-exports.toKeyOf = (x) => x;
 class Keys {
     constructor(o) { this.keys = Object.keys(o) /*.sort()*/; }
     mapTo(mapper) {

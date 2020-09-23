@@ -1402,7 +1402,7 @@ exports.toSubscriber = toSubscriber;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Keys = exports.toKeyOf = exports.guard = exports.asAsync = exports.wait = exports.runit = void 0;
+exports.Keys = exports.guard = exports.asAsync = exports.wait = exports.runit = void 0;
 exports.runit = (gen, promiseCtr) => {
     const runThen = (...args) => {
         const v = args.length ? gen.next(args[0]) : gen.next();
@@ -1421,7 +1421,6 @@ function asAsync(f, promiseCtr, thisArg) {
 }
 exports.asAsync = asAsync;
 exports.guard = (x, cond) => cond;
-exports.toKeyOf = (x) => x;
 class Keys {
     constructor(o) { this.keys = Object.keys(o) /*.sort()*/; }
     mapTo(mapper) {
@@ -1501,13 +1500,14 @@ exports.ChildEntityImpl = void 0;
 const rxjs_1 = __webpack_require__(/*! rxjs */ "rxjs");
 const entity_abstract_1 = __webpack_require__(/*! ./entity-abstract */ "./source/entity/entity-abstract.ts");
 const valued_observable_1 = __webpack_require__(/*! ../valued-observable */ "./source/valued-observable.ts");
+const entity_proxies_1 = __webpack_require__(/*! ./entity-proxies */ "./source/entity/entity-proxies.ts");
 const common_1 = __webpack_require__(/*! ../common */ "./source/common.ts");
 /**
  * Child entity class
  * @template T map of fields output types
  * @template P map of fields parent output types
  * @template V map of fields input types
- * @template K union of initial field keys
+ * @template I union of initial field keys
  */
 class ChildEntityImpl extends entity_abstract_1.EntityAbstract {
     constructor(params) {
@@ -1517,7 +1517,7 @@ class ChildEntityImpl extends entity_abstract_1.EntityAbstract {
         };
         this.rxSource = (k) => {
             return this.rxSourceMap[k] || (this.rxSourceMap[k] = new rxjs_1.BehaviorSubject(this._parent
-                ? this._parent.rx(k)
+                ? entity_proxies_1.$rx(this._parent, k)
                 : new rxjs_1.BehaviorSubject(undefined)));
         };
         this._parent = undefined;
@@ -1528,18 +1528,18 @@ class ChildEntityImpl extends entity_abstract_1.EntityAbstract {
             if (parent)
                 Object.keys(rxSourceMap).forEach((k) => {
                     if (rxSourceMap[k].value === undefined) {
-                        rxSourceMap[k].next(parent.rx(k));
+                        rxSourceMap[k].next(entity_proxies_1.$rx(parent, k));
                     }
                 });
             if (!oldParent)
                 return;
-            Object.keys(oldParent.rxMap).forEach((k) => {
+            Object.keys(entity_proxies_1.$rxMap(oldParent)).forEach((k) => {
                 var _a;
-                if (((_a = rxSourceMap[k]) === null || _a === void 0 ? void 0 : _a.value) === oldParent.rxMap[k]) {
+                if (((_a = rxSourceMap[k]) === null || _a === void 0 ? void 0 : _a.value) === entity_proxies_1.$rxMap(oldParent)[k]) {
                     if (parent)
-                        rxSourceMap[k].next(parent.rx(k));
+                        rxSourceMap[k].next(entity_proxies_1.$rx(parent, k));
                     else {
-                        rxSourceMap[k].next(new rxjs_1.BehaviorSubject(oldParent.rxMap[k].value));
+                        rxSourceMap[k].next(new rxjs_1.BehaviorSubject(entity_proxies_1.$rxMap(oldParent)[k].value));
                     }
                 }
             });
@@ -1548,13 +1548,24 @@ class ChildEntityImpl extends entity_abstract_1.EntityAbstract {
             const parent = this._parent;
             if (!parent)
                 return;
-            (field ? [common_1.toKeyOf(field)] : Object.keys(this.rxSourceMap)).forEach(field => this.rxSource(field).next(parent.rx(field)));
+            (field ? [field] : Object.keys(this.rxSourceMap)).forEach(field => this.rxSource(field).next(entity_proxies_1.$rx(parent, field)));
         };
-        this.levelOf = (field) => valued_observable_1.altern(this.rxSource(field), src => { var _a; return src === ((_a = this._parent) === null || _a === void 0 ? void 0 : _a.rxMap[field]) ? valued_observable_1.map(this._parent.levelOf(field), l => l + 1) : valued_observable_1.of(0); });
+        this.levelOf = (field) => valued_observable_1.altern(this.rxSource(field), (src) => { var _a; return src === ((_a = this._parent) === null || _a === void 0 ? void 0 : _a[field]) ? valued_observable_1.map(entity_proxies_1.$levelOf(this._parent, field), l => l + 1) : valued_observable_1.of(0); });
         const rxMap = this.rxMap = {};
         const rxSourceMap = this.rxSourceMap = {};
         let keys;
-        if (params.parent === undefined) {
+        if (params.ready) {
+            const { data, parent } = params;
+            this._parent = parent;
+            keys = Object.keys(entity_proxies_1.$rxMap(parent));
+            keys.forEach((k) => {
+                const next = common_1.guard(k, k in data)
+                    ? new rxjs_1.BehaviorSubject(data[k])
+                    : entity_proxies_1.$rx(parent, k);
+                rxSourceMap[k] = new rxjs_1.BehaviorSubject(next);
+            });
+        }
+        else {
             const { data, parentPromise } = params;
             keys = Object.keys(data);
             parentPromise.then(this.setParent);
@@ -1562,23 +1573,12 @@ class ChildEntityImpl extends entity_abstract_1.EntityAbstract {
                 rxSourceMap[k] = new rxjs_1.BehaviorSubject(new rxjs_1.BehaviorSubject(data[k]));
             });
         }
-        else {
-            const { data, parent } = params;
-            this._parent = parent;
-            keys = Object.keys(parent.rxMap);
-            keys.forEach((k) => {
-                const next = common_1.guard(k, k in data)
-                    ? new rxjs_1.BehaviorSubject(data[k])
-                    : parent.rx(k);
-                rxSourceMap[k] = new rxjs_1.BehaviorSubject(next);
-            });
-        }
         keys.forEach((k) => rxMap[k] = this.createRx(k));
     }
     createRx(k) {
         const rxSource = this.rxSource(k);
         return Object.assign(valued_observable_1.altern(rxSource, rxjs_1.identity), {
-            next: (x) => this._parent && rxSource.value === this._parent.rx(k)
+            next: (x) => this._parent && rxSource.value === entity_proxies_1.$rx(this._parent, k)
                 ? rxSource.next(new rxjs_1.BehaviorSubject(x))
                 : rxSource.value.next(x)
         });
@@ -1593,7 +1593,7 @@ class ChildEntityImpl extends entity_abstract_1.EntityAbstract {
         const rxSourceMap = this.rxSourceMap;
         for (const k of Object.keys(rxSourceMap)) {
             const source = rxSourceMap[k].value;
-            if (source !== parent.rxMap[k])
+            if (source !== entity_proxies_1.$rxMap(parent)[k])
                 snapshot[k] = source.value;
         }
         return snapshot;
@@ -1651,12 +1651,18 @@ exports.EntityImpl = EntityImpl;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.toEntity = exports.entityFlow = void 0;
+exports.$local = exports.$snapshot = exports.$update = exports.$rewind = exports.$levelOf = exports.$rxMap = exports.$rx = exports.toEntity = exports.entityFlow = exports.getEntity = void 0;
 const altern_map_1 = __webpack_require__(/*! altern-map */ "./node_modules/altern-map/dist/esm/index.js");
-const common_1 = __webpack_require__(/*! ../common */ "./source/common.ts");
+const entities = new WeakMap();
+function getEntity(e) {
+    if (!e)
+        return;
+    return entities.get(e);
+}
+exports.getEntity = getEntity;
 /** Extracts the field observable from the entity flow */
 const fieldRX = (entity, field) => {
-    return entity.pipe(altern_map_1.alternMap(e => e.rx(field)));
+    return entity.pipe(altern_map_1.alternMap(e => getEntity(e).rx(field)));
 };
 /**
  * Creates an `EntityFlow` from an observable
@@ -1679,12 +1685,25 @@ exports.entityFlow = (observable, field) => new Proxy({}, {
  * Creates a proxified `Entity` from an `EntityAbstract`
  * @see {Entity}
  */
-exports.toEntity = (entity) => new Proxy(entity, {
-    get(target, key) {
-        const k = key;
-        return common_1.guard(key, k in entity) ? target[key] : target.rx(key);
-    }
-});
+exports.toEntity = (entity) => {
+    const proxy = new Proxy(Object.prototype, {
+        get(_, key) {
+            return entity.rx(key);
+        },
+        ownKeys() {
+            return Object.keys(entity.rxMap);
+        }
+    });
+    entities.set(proxy, entity);
+    return proxy;
+};
+exports.$rx = (entity, k) => getEntity(entity).rx(k);
+exports.$rxMap = (entity) => getEntity(entity).rxMap;
+exports.$levelOf = (entity, k) => getEntity(entity).levelOf(k);
+exports.$rewind = (entity, k) => getEntity(entity).rewind(k);
+exports.$update = (entity, e) => getEntity(entity).update(e);
+exports.$snapshot = (entity) => getEntity(entity).snapshot;
+exports.$local = (entity) => getEntity(entity).local;
 
 
 /***/ }),
@@ -1835,22 +1854,16 @@ class StoredList {
             var _a, _b;
             let done = [];
             try {
-                console.log('1', n, this.stores[this.key]);
                 if (!this._setDone(n, done, this.list))
                     return yield* common_1.wait(done[0]);
-                console.log('2', n, this.stores[this.key]);
                 const oldList = n ? this.list.data : [];
                 [from, to] = [from || ((_a = oldList[0]) === null || _a === void 0 ? void 0 : _a.entity), to || ((_b = oldList[oldList.length - 1]) === null || _b === void 0 ? void 0 : _b.entity)];
                 const retrieved = yield* common_1.wait(this.retrieve(from, to, err));
-                console.log('3', n, this.stores[this.key]);
                 if (!this._setDone(n, done, this.list))
                     return yield* common_1.wait(done[0]);
-                console.log('4', n, this.stores[this.key]);
                 const list = yield* common_1.wait(this._populate(retrieved.data));
-                console.log('5', n, this.stores[this.key]);
                 if (!this._setDone(n, done, this.list))
                     return yield* common_1.wait(done[0]);
-                console.log('6', n, this.stores[this.key]);
                 // if reload, unsubscribe from old entities
                 if (!n)
                     this.list.data.forEach(e => e.subscription.unsubscribe());
@@ -1858,7 +1871,6 @@ class StoredList {
                 if (retrieved.done === undefined && this.parent)
                     try {
                         const parentDone = yield* common_1.wait(this.parentSubsctiption ? this.parent.exec(n, null) : this.parentSubscriber());
-                        console.log('7u', n, this.stores[this.key], parentDone);
                         return parentDone;
                     }
                     catch (e) {
@@ -1867,22 +1879,17 @@ class StoredList {
                     }
                 else {
                     this.subscriber.next({ list: this.list.data.map(e => e.entity), status: this.list.status });
-                    console.log('7', n, this.stores[this.key]);
                     return retrieved.done;
                 }
             }
             catch (e) {
-                console.log('8', n, this.stores[this.key]);
                 if (!this._setDone(n, done, this.list))
                     return yield* common_1.wait(done[0]);
-                console.log('9', n, this.stores[this.key]);
                 this.list.status = null;
                 if (!this.parent)
                     throw e;
-                console.log('10', n, this.stores[this.key]);
                 try {
                     const parentDone = yield* common_1.wait(this.parentSubsctiption ? this.parent.exec(n, e) : this.parentSubscriber());
-                    console.log('11', n, this.stores[this.key], parentDone);
                     return this._status(null, parentDone);
                 }
                 catch (e) {
@@ -1891,7 +1898,6 @@ class StoredList {
                 }
             }
             finally {
-                console.log('12', n, this.stores[this.key]);
                 this.donePromises[n] = undefined;
             }
         }, this.promiseCtr, this)();
@@ -1935,10 +1941,8 @@ class StoredList {
     toPromise(flowList) {
         return this.promiseCtr.all(flowList.map(async (entitiesFlow) => {
             const subscription = new rxjs_1.Subscription();
-            return {
-                subscription,
-                entity: await this.keys.asyncMapTo((k) => new this.promiseCtr(res => entitiesFlow[k].observable.subscribe(res)), this.promiseCtr)
-            };
+            const entity = this.keys.asyncMapTo((k) => new this.promiseCtr(res => entitiesFlow[k].observable.subscribe(res)), this.promiseCtr);
+            return entity.then((entity) => ({ subscription, entity }));
         }));
     }
     _status(child, parent) {
@@ -2019,7 +2023,7 @@ class Store {
     rewind(id) {
         var _a;
         const item = this._items.get(id);
-        (_a = item === null || item === void 0 ? void 0 : item.entity) === null || _a === void 0 ? void 0 : _a.rewind();
+        (_a = entity_1.getEntity(item === null || item === void 0 ? void 0 : item.entity)) === null || _a === void 0 ? void 0 : _a.rewind();
     }
     /**
      * Ensures the existance of an entity with a givin id using a givin construction logic
@@ -2067,7 +2071,7 @@ class Store {
         if (!item)
             return;
         if (item.entity) {
-            item.entity.update(data);
+            entity_1.$update(item.entity, data);
             item.ready = true;
             return false;
         }
@@ -2075,7 +2079,7 @@ class Store {
             if (this.parent) {
                 const parentFlow = this.parent.get(id);
                 item.entity = entity_1.toEntity(new entity_1.ChildEntityImpl({
-                    data,
+                    data, ready: false,
                     parentPromise: {
                         then: (setParent) => {
                             var _a;
@@ -2106,7 +2110,7 @@ class Store {
         item.id = newId;
         this._items.delete(oldId);
         this._items.set(newId, item);
-        (_a = item.entity) === null || _a === void 0 ? void 0 : _a.setParent();
+        (_a = entity_1.getEntity(item.entity)) === null || _a === void 0 ? void 0 : _a.setParent();
         (_b = item.parentSubscription) === null || _b === void 0 ? void 0 : _b.unsubscribe();
         if (this.parent) {
             const parentFlow = this.parent.get(newId);
@@ -2122,7 +2126,7 @@ class Store {
     // remove(id: K); use a `deleted` field instead
     update(id, data) {
         var _a, _b;
-        (_b = (_a = this._items.get(id)) === null || _a === void 0 ? void 0 : _a.entity) === null || _b === void 0 ? void 0 : _b.update(data);
+        (_b = entity_1.getEntity((_a = this._items.get(id)) === null || _a === void 0 ? void 0 : _a.entity)) === null || _b === void 0 ? void 0 : _b.update(data);
     }
     item(id, observer) {
         let item = this._items.get(id);
@@ -2145,7 +2149,7 @@ class Store {
                     let run = !skipCurrent;
                     // this._entities.set will not be runned when .next is invoked because it will be already unsubscribed
                     item.parentSubscription = this.parent.get(id).observable.subscribe(parent => {
-                        item.entity = entity_1.toEntity(new entity_1.ChildEntityImpl({ data: {}, parent }));
+                        item.entity = entity_1.toEntity(new entity_1.ChildEntityImpl({ data: {}, parent, ready: true }));
                         this.emptyInsersions.next(item.id);
                         if (run)
                             observers.forEach(subscriber => subscriber.next(item.entity));

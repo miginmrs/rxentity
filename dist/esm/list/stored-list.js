@@ -46,22 +46,16 @@ export class StoredList {
         this._exec = (n, err, from, to) => asAsync(function* () {
             let done = [];
             try {
-                console.log('1', n, this.stores[this.key]);
                 if (!this._setDone(n, done, this.list))
                     return yield* wait(done[0]);
-                console.log('2', n, this.stores[this.key]);
                 const oldList = n ? this.list.data : [];
                 [from, to] = [from || oldList[0]?.entity, to || oldList[oldList.length - 1]?.entity];
                 const retrieved = yield* wait(this.retrieve(from, to, err));
-                console.log('3', n, this.stores[this.key]);
                 if (!this._setDone(n, done, this.list))
                     return yield* wait(done[0]);
-                console.log('4', n, this.stores[this.key]);
                 const list = yield* wait(this._populate(retrieved.data));
-                console.log('5', n, this.stores[this.key]);
                 if (!this._setDone(n, done, this.list))
                     return yield* wait(done[0]);
-                console.log('6', n, this.stores[this.key]);
                 // if reload, unsubscribe from old entities
                 if (!n)
                     this.list.data.forEach(e => e.subscription.unsubscribe());
@@ -69,7 +63,6 @@ export class StoredList {
                 if (retrieved.done === undefined && this.parent)
                     try {
                         const parentDone = yield* wait(this.parentSubsctiption ? this.parent.exec(n, null) : this.parentSubscriber());
-                        console.log('7u', n, this.stores[this.key], parentDone);
                         return parentDone;
                     }
                     catch (e) {
@@ -78,22 +71,17 @@ export class StoredList {
                     }
                 else {
                     this.subscriber.next({ list: this.list.data.map(e => e.entity), status: this.list.status });
-                    console.log('7', n, this.stores[this.key]);
                     return retrieved.done;
                 }
             }
             catch (e) {
-                console.log('8', n, this.stores[this.key]);
                 if (!this._setDone(n, done, this.list))
                     return yield* wait(done[0]);
-                console.log('9', n, this.stores[this.key]);
                 this.list.status = null;
                 if (!this.parent)
                     throw e;
-                console.log('10', n, this.stores[this.key]);
                 try {
                     const parentDone = yield* wait(this.parentSubsctiption ? this.parent.exec(n, e) : this.parentSubscriber());
-                    console.log('11', n, this.stores[this.key], parentDone);
                     return this._status(null, parentDone);
                 }
                 catch (e) {
@@ -102,7 +90,6 @@ export class StoredList {
                 }
             }
             finally {
-                console.log('12', n, this.stores[this.key]);
                 this.donePromises[n] = undefined;
             }
         }, this.promiseCtr, this)();
@@ -144,10 +131,8 @@ export class StoredList {
     toPromise(flowList) {
         return this.promiseCtr.all(flowList.map(async (entitiesFlow) => {
             const subscription = new Subscription();
-            return {
-                subscription,
-                entity: await this.keys.asyncMapTo((k) => new this.promiseCtr(res => entitiesFlow[k].observable.subscribe(res)), this.promiseCtr)
-            };
+            const entity = this.keys.asyncMapTo((k) => new this.promiseCtr(res => entitiesFlow[k].observable.subscribe(res)), this.promiseCtr);
+            return entity.then((entity) => ({ subscription, entity }));
         }));
     }
     _status(child, parent) {

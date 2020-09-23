@@ -1,11 +1,17 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.toEntity = exports.entityFlow = void 0;
+exports.$local = exports.$snapshot = exports.$update = exports.$rewind = exports.$levelOf = exports.$rxMap = exports.$rx = exports.toEntity = exports.entityFlow = exports.getEntity = void 0;
 const altern_map_1 = require("altern-map");
-const common_1 = require("../common");
+const entities = new WeakMap();
+function getEntity(e) {
+    if (!e)
+        return;
+    return entities.get(e);
+}
+exports.getEntity = getEntity;
 /** Extracts the field observable from the entity flow */
 const fieldRX = (entity, field) => {
-    return entity.pipe(altern_map_1.alternMap(e => e.rx(field)));
+    return entity.pipe(altern_map_1.alternMap(e => getEntity(e).rx(field)));
 };
 /**
  * Creates an `EntityFlow` from an observable
@@ -28,10 +34,23 @@ exports.entityFlow = (observable, field) => new Proxy({}, {
  * Creates a proxified `Entity` from an `EntityAbstract`
  * @see {Entity}
  */
-exports.toEntity = (entity) => new Proxy(entity, {
-    get(target, key) {
-        const k = key;
-        return common_1.guard(key, k in entity) ? target[key] : target.rx(key);
-    }
-});
+exports.toEntity = (entity) => {
+    const proxy = new Proxy(Object.prototype, {
+        get(_, key) {
+            return entity.rx(key);
+        },
+        ownKeys() {
+            return Object.keys(entity.rxMap);
+        }
+    });
+    entities.set(proxy, entity);
+    return proxy;
+};
+exports.$rx = (entity, k) => getEntity(entity).rx(k);
+exports.$rxMap = (entity) => getEntity(entity).rxMap;
+exports.$levelOf = (entity, k) => getEntity(entity).levelOf(k);
+exports.$rewind = (entity, k) => getEntity(entity).rewind(k);
+exports.$update = (entity, e) => getEntity(entity).update(e);
+exports.$snapshot = (entity) => getEntity(entity).snapshot;
+exports.$local = (entity) => getEntity(entity).local;
 //# sourceMappingURL=entity-proxies.js.map
