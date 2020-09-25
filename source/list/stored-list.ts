@@ -177,11 +177,12 @@ export abstract class TopStoredList<K extends string, ID extends Pick<any, K>, K
   *fromParent(_n: number, process: () => boolean | undefined): Generator<any, ListStatus, any> { return process(); }
 }
 export abstract class ChildStoredList<K extends string, ID extends Pick<any, K>, KK extends Record<K, string>,
-  key extends K, T extends TRec<K, KK>, V extends T, P extends T, pimpl extends AbstractEntities<K, KK, P, any>> extends AbstractStoredList<K, ID, KK, key, T, V, ChildEntitiesImpl<K, KK, T, V, P, pimpl>, ChildStores<K, ID, KK, T, V, P, pimpl>> {
-  readonly parent: AbstractStoredList<K, ID, KK, key, P, any, pimpl, AbstractStores<K, ID, KK, P, any, pimpl>>
-  constructor(params: Params<K, ID, key, KK, T, V, ChildEntitiesImpl<K, KK, T, V, P, pimpl>, ChildStores<K, ID, KK, T, V, P, pimpl>>&{
-    parent: AbstractStoredList<K, ID, KK, key, P, any, pimpl, AbstractStores<K, ID, KK, P, any, pimpl>>
-  }) {
+  key extends K, T extends TRec<K, KK>, V extends T, P extends T, pimpl extends AbstractEntities<K, KK, P, any>,
+  stores extends ChildStores<K, ID, KK, T, V, P, pimpl, AbstractStores<K, ID, KK, P, any, pimpl>>,
+  PL extends AbstractStoredList<K, ID, KK, key, P, any, pimpl, AbstractStores<K, ID, KK, P, any, pimpl>>>
+  extends AbstractStoredList<K, ID, KK, key, T, V, ChildEntitiesImpl<K, KK, T, V, P, pimpl>, stores> {
+  readonly parent: PL
+  constructor(params: Params<K, ID, key, KK, T, V, ChildEntitiesImpl<K, KK, T, V, P, pimpl>, stores> & { parent: PL }) {
     super(params);
     this.parent = params.parent;
   }
@@ -190,7 +191,10 @@ export abstract class ChildStoredList<K extends string, ID extends Pick<any, K>,
       const key = this.key;
       const flowList: EntitiesFlow<K, KK, T, V, ChildEntitiesImpl<K, KK, T, V, P, pimpl>>[]
         = parentList.list.map(e => this.keys.mapTo<EntitiesFlow<K, KK, T, V, ChildEntitiesImpl<K, KK, T, V, P, pimpl>>>(
-          k => this.stores[k].get(this.keyofEntity(k, e[k]))));
+          <k extends K>(k: k) => {
+            const stores: ChildStores<K, ID, KK, T, V, P, pimpl, AbstractStores<K, ID, KK, P, any, pimpl>> = this.stores;
+            return stores[k].get(this.keyofEntity(k, e[k]));
+          }));
       const entitiesSet = new Set(this.list?.data.map(u => u.entity[key]));
       const parentEntities = await this.toPromise(flowList);
 

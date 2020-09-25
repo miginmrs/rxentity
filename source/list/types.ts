@@ -13,8 +13,8 @@ export type EntitiesImpl<K extends string, KK extends Record<K, string>, T exten
   = { [k in K]: EntityImpl<KK[k], T[k], V[k]> };
 export type ChildEntitiesImpl<K extends string, KK extends Record<K, string>, T extends TRec<K, KK>, V extends T, P extends T, pimpl extends AbstractEntities<K, KK, P, any>>
   = { [k in K]: ChildEntityImpl<KK[k], T[k], V[k], P[k], pimpl[k] & EntityAbstract<KK[k], P[k], any>> };
-export type ChildStores<K extends string, ID extends Pick<any, K>, KK extends Record<K, string>, T extends TRec<K, KK>, V extends T, P extends T, pimpl extends AbstractEntities<K, KK, P, any> = AbstractEntities<K, KK, P, any>>
-  = { [k in K]: ChildStore<ID[k], KK[k], T[k], V[k], P[k], pimpl[k] & EntityAbstract<KK[k], P[k], any>> };
+export type ChildStores<K extends string, ID extends Pick<any, K>, KK extends Record<K, string>, T extends TRec<K, KK>, V extends T, P extends T, pimpl extends AbstractEntities<K, KK, P, any>, PS extends AbstractStores<K, ID, KK, P, any, pimpl>>
+  = { [k in K]: ChildStore<ID[k], KK[k], T[k], V[k], P[k], pimpl[k] & EntityAbstract<KK[k], P[k], any>, PS[k] & AbstractStore<ID[k], KK[k], P[k], any, pimpl[k] & EntityAbstract<KK[k], P[k], any>>> };
 export type TopStores<K extends string, ID extends Pick<any, K>, KK extends Record<K, string>, T extends TRec<K, KK>, V extends T>
   = { [k in K]: TopStore<ID[k], KK[k], T[k], V[k]> };
 export type AbstractStores<K extends string, ID extends Pick<any, K>, KK extends Record<K, string>, T extends TRec<K, KK>, V extends T, impl extends AbstractEntities<K, KK, T, V>>

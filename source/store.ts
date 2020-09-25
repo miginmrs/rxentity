@@ -147,13 +147,13 @@ export abstract class AbstractStore<ID, K extends string, T extends Rec<K>, V ex
 }
 
 
-export class ChildStore<ID, K extends string, T extends Rec<K>, V extends T, P extends T, pimpl extends EntityAbstract<K, P, any>> extends AbstractStore<ID, K, T, V, ChildEntityImpl<K, T, V, P, pimpl>> {
+export class ChildStore<ID, K extends string, T extends Rec<K>, V extends T, P extends T, pimpl extends EntityAbstract<K, P, any>, PS extends AbstractStore<ID, K, P, any, pimpl>> extends AbstractStore<ID, K, T, V, ChildEntityImpl<K, T, V, P, pimpl>> {
 
   constructor(
     name: string,
     finalize: (id: ID, entity: Entity<K, T, V>) => void,
     promiseCtr: PromiseCtr,
-    readonly parent: AbstractStore<ID, K, P, any, pimpl>,
+    readonly parent: PS,
   ) { super(name, finalize, promiseCtr) }
 
   setItemEntity(id: ID, data: V, item: Item<ID, K, T, V, ChildEntityImpl<K, T, V, P, pimpl>>) {
