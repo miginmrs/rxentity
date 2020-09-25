@@ -1,5 +1,5 @@
 import { Rec } from '..';
-import { ValuedSubject } from '../valued-observable';
+import { ValuedSubject } from 'rxvalue';
 /**
  * Entity base class
  * @template T map of fields output types

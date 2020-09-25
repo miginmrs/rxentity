@@ -1,4 +1,4 @@
-import { of } from '../valued-observable';
+import { of } from 'rxvalue';
 /**
  * Entity base class
  * @template T map of fields output types

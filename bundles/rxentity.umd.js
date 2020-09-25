@@ -106,26 +106,24 @@ return /******/ (function(modules) { // webpackBootstrap
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "alternMap", function() { return alternMap; });
-/* harmony import */ var rxjs__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! rxjs */ "rxjs");
-/* harmony import */ var rxjs__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(rxjs__WEBPACK_IMPORTED_MODULE_0__);
-/* harmony import */ var rxjs_operators__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! rxjs/operators */ "rxjs/operators");
-/* harmony import */ var rxjs_operators__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(rxjs_operators__WEBPACK_IMPORTED_MODULE_1__);
-/* harmony import */ var rxjs_internal_OuterSubscriber__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! rxjs/internal/OuterSubscriber */ "./node_modules/rxjs/internal/OuterSubscriber.js");
-/* harmony import */ var rxjs_internal_OuterSubscriber__WEBPACK_IMPORTED_MODULE_2___default = /*#__PURE__*/__webpack_require__.n(rxjs_internal_OuterSubscriber__WEBPACK_IMPORTED_MODULE_2__);
-/* harmony import */ var rxjs_internal_InnerSubscriber__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! rxjs/internal/InnerSubscriber */ "./node_modules/rxjs/internal/InnerSubscriber.js");
-/* harmony import */ var rxjs_internal_InnerSubscriber__WEBPACK_IMPORTED_MODULE_3___default = /*#__PURE__*/__webpack_require__.n(rxjs_internal_InnerSubscriber__WEBPACK_IMPORTED_MODULE_3__);
-/* harmony import */ var rxjs_internal_util_subscribeToResult__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! rxjs/internal/util/subscribeToResult */ "./node_modules/rxjs/internal/util/subscribeToResult.js");
-/* harmony import */ var rxjs_internal_util_subscribeToResult__WEBPACK_IMPORTED_MODULE_4___default = /*#__PURE__*/__webpack_require__.n(rxjs_internal_util_subscribeToResult__WEBPACK_IMPORTED_MODULE_4__);
+/* harmony import */ var rxjs_internal_OuterSubscriber__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! rxjs/internal/OuterSubscriber */ "./node_modules/rxjs/internal/OuterSubscriber.js");
+/* harmony import */ var rxjs_internal_OuterSubscriber__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(rxjs_internal_OuterSubscriber__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var rxjs_internal_InnerSubscriber__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! rxjs/internal/InnerSubscriber */ "./node_modules/rxjs/internal/InnerSubscriber.js");
+/* harmony import */ var rxjs_internal_InnerSubscriber__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(rxjs_internal_InnerSubscriber__WEBPACK_IMPORTED_MODULE_1__);
+/* harmony import */ var rxjs_internal_util_subscribeToResult__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! rxjs/internal/util/subscribeToResult */ "./node_modules/rxjs/internal/util/subscribeToResult.js");
+/* harmony import */ var rxjs_internal_util_subscribeToResult__WEBPACK_IMPORTED_MODULE_2___default = /*#__PURE__*/__webpack_require__.n(rxjs_internal_util_subscribeToResult__WEBPACK_IMPORTED_MODULE_2__);
 
 
 
-
-
-function alternMap(project, options, resultSelector) {
-    if (typeof resultSelector === 'function') {
-        return (source) => source.pipe(alternMap((a, i) => Object(rxjs__WEBPACK_IMPORTED_MODULE_0__["from"])(project(a, i)).pipe(Object(rxjs_operators__WEBPACK_IMPORTED_MODULE_1__["map"])((b, ii) => resultSelector(a, b, i, ii))), options));
-    }
-    return (source) => source.lift(new AlternMapOperator(project, options || {}));
+function alternMap(...args) {
+    const [project, options] = args;
+    const op = (source) => source.lift(new AlternMapOperator(project, options || {}));
+    if (!args[2])
+        return op;
+    const p = args[0];
+    return (source) => Object.defineProperty(op(source), 'value', {
+        get: () => p(source.value, -1).value
+    });
 }
 class AlternMapOperator {
     constructor(project, options) {
@@ -136,7 +134,7 @@ class AlternMapOperator {
         return source.subscribe(new AlternMapSubscriber(subscriber, this.project, this.options));
     }
 }
-class AlternMapSubscriber extends rxjs_internal_OuterSubscriber__WEBPACK_IMPORTED_MODULE_2__["OuterSubscriber"] {
+class AlternMapSubscriber extends rxjs_internal_OuterSubscriber__WEBPACK_IMPORTED_MODULE_0__["OuterSubscriber"] {
     constructor(destination, project, options) {
         super(destination);
         this.project = project;
@@ -157,10 +155,10 @@ class AlternMapSubscriber extends rxjs_internal_OuterSubscriber__WEBPACK_IMPORTE
     }
     _innerSub(result, value, index) {
         const innerSubscription = this.innerSubscription;
-        const innerSubscriber = new rxjs_internal_InnerSubscriber__WEBPACK_IMPORTED_MODULE_3__["InnerSubscriber"](this, value, index);
+        const innerSubscriber = new rxjs_internal_InnerSubscriber__WEBPACK_IMPORTED_MODULE_1__["InnerSubscriber"](this, value, index);
         const destination = this.destination;
         destination.add(innerSubscriber);
-        this.innerSubscription = Object(rxjs_internal_util_subscribeToResult__WEBPACK_IMPORTED_MODULE_4__["subscribeToResult"])(this, result, undefined, undefined, innerSubscriber);
+        this.innerSubscription = Object(rxjs_internal_util_subscribeToResult__WEBPACK_IMPORTED_MODULE_2__["subscribeToResult"])(this, result, undefined, undefined, innerSubscriber);
         if (this.innerSubscription !== innerSubscriber) {
             destination.add(this.innerSubscription);
         }
@@ -1392,6 +1390,88 @@ exports.toSubscriber = toSubscriber;
 
 /***/ }),
 
+/***/ "./node_modules/rxvalue/dist/esm/index.js":
+/*!************************************************!*\
+  !*** ./node_modules/rxvalue/dist/esm/index.js ***!
+  \************************************************/
+/*! exports provided: of, map, distinctUntilChanged, combine, idem, fromPromise */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _rxvalue__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./rxvalue */ "./node_modules/rxvalue/dist/esm/rxvalue.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "of", function() { return _rxvalue__WEBPACK_IMPORTED_MODULE_0__["of"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "map", function() { return _rxvalue__WEBPACK_IMPORTED_MODULE_0__["map"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "distinctUntilChanged", function() { return _rxvalue__WEBPACK_IMPORTED_MODULE_0__["distinctUntilChanged"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "combine", function() { return _rxvalue__WEBPACK_IMPORTED_MODULE_0__["combine"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "idem", function() { return _rxvalue__WEBPACK_IMPORTED_MODULE_0__["idem"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "fromPromise", function() { return _rxvalue__WEBPACK_IMPORTED_MODULE_0__["fromPromise"]; });
+
+
+//# sourceMappingURL=index.js.map
+
+/***/ }),
+
+/***/ "./node_modules/rxvalue/dist/esm/rxvalue.js":
+/*!**************************************************!*\
+  !*** ./node_modules/rxvalue/dist/esm/rxvalue.js ***!
+  \**************************************************/
+/*! exports provided: of, map, distinctUntilChanged, combine, idem, fromPromise */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "of", function() { return of; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "map", function() { return map; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "distinctUntilChanged", function() { return distinctUntilChanged; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "combine", function() { return combine; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "idem", function() { return idem; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "fromPromise", function() { return fromPromise; });
+/* harmony import */ var rxjs__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! rxjs */ "rxjs");
+/* harmony import */ var rxjs__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(rxjs__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var rxjs_operators__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! rxjs/operators */ "rxjs/operators");
+/* harmony import */ var rxjs_operators__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(rxjs_operators__WEBPACK_IMPORTED_MODULE_1__);
+
+
+const of = (value) => Object.assign(Object(rxjs__WEBPACK_IMPORTED_MODULE_0__["of"])(value), { value });
+function map(p, thisArg, valued) {
+    const map = Object(rxjs_operators__WEBPACK_IMPORTED_MODULE_1__["map"])(p, thisArg);
+    return valued ? (source) => {
+        const obs = map(source);
+        return Object.defineProperty(obs, 'value', { get: () => p.call(thisArg, source.value, -1) });
+    } : map;
+}
+function distinctUntilChanged(compare, keySelector, valued) {
+    const op = compare && keySelector ? Object(rxjs_operators__WEBPACK_IMPORTED_MODULE_1__["distinctUntilChanged"])(compare, keySelector) : Object(rxjs_operators__WEBPACK_IMPORTED_MODULE_1__["distinctUntilChanged"])(compare);
+    return valued ? (source) => {
+        const obs = source.pipe(op);
+        return Object.defineProperty(obs, 'value', { get: () => source.value });
+    } : op;
+}
+const combine = (sources) => Object.defineProperty(Object(rxjs__WEBPACK_IMPORTED_MODULE_0__["combineLatest"])(sources), 'value', { get: () => sources.map(s => s.value) });
+const idem = (op) => (o) => Object.defineProperty(o.pipe(op), 'value', { get: () => o.value });
+const fromPromise = (p, value) => {
+    const observable = new rxjs__WEBPACK_IMPORTED_MODULE_0__["Observable"](subs => {
+        let done = false;
+        subs.next(value);
+        p.then(v => {
+            if (!done)
+                subs.next(value = v);
+            subs.complete();
+        }, err => subs.error(err));
+        return () => { done = true; };
+    });
+    return Object.defineProperty(observable, 'value', () => value);
+};
+//# sourceMappingURL=rxvalue.js.map
+
+/***/ }),
+
 /***/ "./source/common.ts":
 /*!**************************!*\
   !*** ./source/common.ts ***!
@@ -1449,7 +1529,7 @@ exports.Keys = Keys;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EntityAbstract = void 0;
-const valued_observable_1 = __webpack_require__(/*! ../valued-observable */ "./source/valued-observable.ts");
+const rxvalue_1 = __webpack_require__(/*! rxvalue */ "./node_modules/rxvalue/dist/esm/index.js");
 /**
  * Entity base class
  * @template T map of fields output types
@@ -1469,7 +1549,7 @@ class EntityAbstract {
         /** define the parent of the entity */
         this.setParent = () => { };
         /** get the number of entities between the actual and the source of the field */
-        this.levelOf = (_field) => valued_observable_1.of(0);
+        this.levelOf = (_field) => rxvalue_1.of(0);
     }
     /** a `getter` snapshot for all the entity `fields` */
     get snapshot() {
@@ -1499,9 +1579,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ChildEntityImpl = void 0;
 const rxjs_1 = __webpack_require__(/*! rxjs */ "rxjs");
 const entity_abstract_1 = __webpack_require__(/*! ./entity-abstract */ "./source/entity/entity-abstract.ts");
-const valued_observable_1 = __webpack_require__(/*! ../valued-observable */ "./source/valued-observable.ts");
+const rxvalue_1 = __webpack_require__(/*! rxvalue */ "./node_modules/rxvalue/dist/esm/index.js");
 const entity_proxies_1 = __webpack_require__(/*! ./entity-proxies */ "./source/entity/entity-proxies.ts");
-const common_1 = __webpack_require__(/*! ../common */ "./source/common.ts");
+const altern_map_1 = __webpack_require__(/*! altern-map */ "./node_modules/altern-map/dist/esm/index.js");
 /**
  * Child entity class
  * @template T map of fields output types
@@ -1550,7 +1630,7 @@ class ChildEntityImpl extends entity_abstract_1.EntityAbstract {
                 return;
             (field ? [field] : Object.keys(this.rxSourceMap)).forEach(field => this.rxSource(field).next(entity_proxies_1.$rx(parent, field)));
         };
-        this.levelOf = (field) => valued_observable_1.altern(this.rxSource(field), (src) => { var _a; return src === ((_a = this._parent) === null || _a === void 0 ? void 0 : _a[field]) ? valued_observable_1.map(entity_proxies_1.$levelOf(this._parent, field), l => l + 1) : valued_observable_1.of(0); });
+        this.levelOf = (field) => this.rxSource(field).pipe(altern_map_1.alternMap((src) => { var _a; return src === ((_a = this._parent) === null || _a === void 0 ? void 0 : _a[field]) ? entity_proxies_1.$levelOf(this._parent, field).pipe(rxvalue_1.map(l => l + 1, 0, true)) : rxvalue_1.of(0); }, {}, true));
         const rxMap = this.rxMap = {};
         const rxSourceMap = this.rxSourceMap = {};
         let keys;
@@ -1559,7 +1639,7 @@ class ChildEntityImpl extends entity_abstract_1.EntityAbstract {
             this._parent = parent;
             keys = Object.keys(entity_proxies_1.$rxMap(parent));
             keys.forEach((k) => {
-                const next = common_1.guard(k, k in data)
+                const next = k in data
                     ? new rxjs_1.BehaviorSubject(data[k])
                     : entity_proxies_1.$rx(parent, k);
                 rxSourceMap[k] = new rxjs_1.BehaviorSubject(next);
@@ -1577,7 +1657,8 @@ class ChildEntityImpl extends entity_abstract_1.EntityAbstract {
     }
     createRx(k) {
         const rxSource = this.rxSource(k);
-        return Object.assign(valued_observable_1.altern(rxSource, rxjs_1.identity), {
+        const zz = altern_map_1.alternMap(rxjs_1.identity, {}, true);
+        return Object.assign(rxSource.pipe(zz), {
             next: (x) => this._parent && rxSource.value === entity_proxies_1.$rx(this._parent, k)
                 ? rxSource.next(new rxjs_1.BehaviorSubject(x))
                 : rxSource.value.next(x)
@@ -1725,7 +1806,7 @@ var __createBinding = (this && this.__createBinding) || (Object.create ? (functi
     o[k2] = m[k];
 }));
 var __exportStar = (this && this.__exportStar) || function(m, exports) {
-    for (var p in m) if (p !== "default" && !exports.hasOwnProperty(p)) __createBinding(exports, m, p);
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(__webpack_require__(/*! ./entity-abstract */ "./source/entity/entity-abstract.ts"), exports);
@@ -1753,14 +1834,13 @@ var __createBinding = (this && this.__createBinding) || (Object.create ? (functi
     o[k2] = m[k];
 }));
 var __exportStar = (this && this.__exportStar) || function(m, exports) {
-    for (var p in m) if (p !== "default" && !exports.hasOwnProperty(p)) __createBinding(exports, m, p);
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(__webpack_require__(/*! ./entity */ "./source/entity/index.ts"), exports);
 __exportStar(__webpack_require__(/*! ./list */ "./source/list/index.ts"), exports);
 __exportStar(__webpack_require__(/*! ./common */ "./source/common.ts"), exports);
 __exportStar(__webpack_require__(/*! ./store */ "./source/store.ts"), exports);
-__exportStar(__webpack_require__(/*! ./valued-observable */ "./source/valued-observable.ts"), exports);
 
 
 /***/ }),
@@ -1782,7 +1862,7 @@ var __createBinding = (this && this.__createBinding) || (Object.create ? (functi
     o[k2] = m[k];
 }));
 var __exportStar = (this && this.__exportStar) || function(m, exports) {
-    for (var p in m) if (p !== "default" && !exports.hasOwnProperty(p)) __createBinding(exports, m, p);
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(__webpack_require__(/*! ./stored-list */ "./source/list/stored-list.ts"), exports);
@@ -1801,11 +1881,11 @@ __exportStar(__webpack_require__(/*! ./types */ "./source/list/types.ts"), expor
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.StoredList = void 0;
+exports.ChildStoredList = exports.TopStoredList = exports.AbstractStoredList = void 0;
 const rxjs_1 = __webpack_require__(/*! rxjs */ "rxjs");
 const operators_1 = __webpack_require__(/*! rxjs/operators */ "rxjs/operators");
 const common_1 = __webpack_require__(/*! ../common */ "./source/common.ts");
-class StoredList {
+class AbstractStoredList {
     /**
      * @param {Params} params
      */
@@ -1814,29 +1894,7 @@ class StoredList {
         this.list = null;
         this.subscriber = null;
         this.donePromises = [];
-        this.parentSubscriber = () => new this.promiseCtr((resolve, reject) => {
-            var _a;
-            this.parentSubsctiption = (_a = this.parent) === null || _a === void 0 ? void 0 : _a.entities.subscribe(async (parentList) => {
-                var _a, _b;
-                const key = this.key;
-                const flowList = parentList.list.map(e => this.keys.mapTo(k => this.stores[k].get(this.keyofEntity(k, e[k]))));
-                const entitiesSet = new Set((_a = this.list) === null || _a === void 0 ? void 0 : _a.data.map(u => u.entity[key]));
-                const parentEntities = await this.toPromise(flowList);
-                const newIds = parentEntities.filter(e => !entitiesSet.has(e.entity[key])).map(e => this.keys.mapTo(k => this.keyofEntity(k, e.entity[k])));
-                // console.log('newIds', newIds, this.store);
-                const newEntities = await this.toPromise(newIds.map(id => this.keys.mapTo((k) => this.stores[k].get(id[k]))));
-                // unsubscribe after new subscription made to reuse recently created entities
-                parentEntities.forEach(s => s.subscription.unsubscribe());
-                if (!this.list)
-                    return reject();
-                const newList = this.merge(key, this.list.data, newEntities);
-                this.list = { data: newList, status: this._status(this.list.status, parentList.status) };
-                (_b = this.subscriber) === null || _b === void 0 ? void 0 : _b.next({ list: this.list.data.map(({ entity }) => entity), status: this.list.status });
-                return resolve(this.list.status);
-            });
-        });
         this.entities = new rxjs_1.Observable(subscriber => {
-            console.log('+++ subscribing', this.stores);
             this.list = { data: [], status: undefined };
             this.subscriber = subscriber;
             this.reload();
@@ -1847,7 +1905,6 @@ class StoredList {
                 this.subscriber = null;
                 (_b = this.list) === null || _b === void 0 ? void 0 : _b.data.forEach(e => e.subscription.unsubscribe());
                 this.list = null;
-                console.log('xxx unsubscribed', this.stores);
             };
         }).pipe(operators_1.shareReplay({ bufferSize: 1, refCount: true }));
         this._exec = (n, err, from, to) => common_1.asAsync(function* () {
@@ -1868,40 +1925,25 @@ class StoredList {
                 if (!n)
                     this.list.data.forEach(e => e.subscription.unsubscribe());
                 this.list = { data: oldList.concat(list), status: retrieved.done };
-                if (retrieved.done === undefined && this.parent)
-                    try {
-                        const parentDone = yield* common_1.wait(this.parentSubsctiption ? this.parent.exec(n, null) : this.parentSubscriber());
-                        return parentDone;
-                    }
-                    catch (e) {
-                        // unsubscribed while retrieving data from parent
-                        return true;
-                    }
-                else {
+                const process = () => {
+                    if (!this.list)
+                        throw new Error('Unexpected state');
                     this.subscriber.next({ list: this.list.data.map(e => e.entity), status: this.list.status });
                     return retrieved.done;
-                }
+                };
+                return retrieved.done === undefined ? yield* this.fromParent(n, process) : process();
             }
             catch (e) {
                 if (!this._setDone(n, done, this.list))
                     return yield* common_1.wait(done[0]);
                 this.list.status = null;
-                if (!this.parent)
-                    throw e;
-                try {
-                    const parentDone = yield* common_1.wait(this.parentSubsctiption ? this.parent.exec(n, e) : this.parentSubscriber());
-                    return this._status(null, parentDone);
-                }
-                catch (e) {
-                    // unsubscribed while retrieving data from parent
-                    return true;
-                }
+                return yield* this.handleError(n, e);
             }
             finally {
                 this.donePromises[n] = undefined;
             }
         }, this.promiseCtr, this)();
-        const { key, merge, retrieve, parent, keyof, keyofEntity, stores, promiseCtr } = params;
+        const { key, merge, retrieve, keyof, keyofEntity, stores, promiseCtr } = params;
         this.keyof = keyof;
         this.keyofEntity = keyofEntity;
         this.stores = stores;
@@ -1909,7 +1951,6 @@ class StoredList {
         this.retrieve = retrieve;
         this.key = key;
         this.merge = merge;
-        this.parent = parent;
         this.promiseCtr = promiseCtr;
     }
     add(entity) {
@@ -1921,7 +1962,8 @@ class StoredList {
         const subscription = new rxjs_1.Subscription();
         const stores = this.stores;
         new common_1.Keys(entity).keys.forEach(k => {
-            subscription.add(stores[k].get(id).observable.subscribe());
+            const obs = stores[k].get(id).observable;
+            subscription.add(obs.subscribe());
         });
         this.list = { data: [{ entity, subscription }, ...this.list.data], status: this.list.status };
         (_a = this.subscriber) === null || _a === void 0 ? void 0 : _a.next({ list: this.list.data.map(e => e.entity), status: this.list.status });
@@ -1939,11 +1981,12 @@ class StoredList {
         }
     }
     toPromise(flowList) {
-        return this.promiseCtr.all(flowList.map(async (entitiesFlow) => {
+        const entitiesWithSubs = flowList.map(common_1.asAsync(function* (entitiesFlow) {
             const subscription = new rxjs_1.Subscription();
             const entity = this.keys.asyncMapTo((k) => new this.promiseCtr(res => entitiesFlow[k].observable.subscribe(res)), this.promiseCtr);
-            return entity.then((entity) => ({ subscription, entity }));
-        }));
+            return yield* common_1.wait(entity.then((entity) => ({ subscription, entity })));
+        }, this.promiseCtr, this));
+        return this.promiseCtr.all(entitiesWithSubs);
     }
     _status(child, parent) {
         return child === null ? null : child !== null && child !== void 0 ? child : parent;
@@ -1978,7 +2021,63 @@ class StoredList {
         return (this.donePromises[n] || (this.donePromises[n] = this._exec(n, err, from, to)));
     }
 }
-exports.StoredList = StoredList;
+exports.AbstractStoredList = AbstractStoredList;
+class TopStoredList extends AbstractStoredList {
+    *handleError(_n, e) { throw e; }
+    *fromParent(_n, process) { return process(); }
+}
+exports.TopStoredList = TopStoredList;
+class ChildStoredList extends AbstractStoredList {
+    constructor(params) {
+        super(params);
+        this.parentSubscriber = () => new this.promiseCtr((resolve, reject) => {
+            var _a;
+            this.parentSubsctiption = (_a = this.parent) === null || _a === void 0 ? void 0 : _a.entities.subscribe(parentList => common_1.asAsync(function* () {
+                var _a, _b;
+                const key = this.key;
+                const flowList = parentList.list.map(e => this.keys.mapTo((k) => {
+                    const stores = this.stores;
+                    return stores[k].get(this.keyofEntity(k, e[k]));
+                }));
+                const entitiesSet = new Set((_a = this.list) === null || _a === void 0 ? void 0 : _a.data.map(u => u.entity[key]));
+                const parentEntities = yield* common_1.wait(this.toPromise(flowList));
+                const newIds = parentEntities.filter(e => !entitiesSet.has(e.entity[key])).map(e => this.keys.mapTo(k => this.keyofEntity(k, e.entity[k])));
+                // console.log('newIds', newIds, this.store);
+                const newEntities = yield* common_1.wait(this.toPromise(newIds.map(id => this.keys.mapTo((k) => this.stores[k].get(id[k])))));
+                // unsubscribe after new subscription made to reuse recently created entities
+                parentEntities.forEach(s => s.subscription.unsubscribe());
+                if (!this.list)
+                    return reject();
+                const newList = this.merge(key, this.list.data, newEntities);
+                this.list = { data: newList, status: this._status(this.list.status, parentList.status) };
+                (_b = this.subscriber) === null || _b === void 0 ? void 0 : _b.next({ list: this.list.data.map(({ entity }) => entity), status: this.list.status });
+                return resolve(this.list.status);
+            }, this.promiseCtr, this)());
+        });
+        this.parent = params.parent;
+    }
+    *fromParent(n) {
+        try {
+            const parentDone = yield* common_1.wait(this.parentSubsctiption ? this.parent.exec(n, null) : this.parentSubscriber());
+            return parentDone;
+        }
+        catch (e) {
+            // unsubscribed while retrieving data from parent
+            return true;
+        }
+    }
+    *handleError(n, e) {
+        try {
+            const parentDone = yield* common_1.wait(this.parentSubsctiption ? this.parent.exec(n, e) : this.parentSubscriber());
+            return this._status(null, parentDone);
+        }
+        catch (e) {
+            // unsubscribed while retrieving data from parent
+            return true;
+        }
+    }
+}
+exports.ChildStoredList = ChildStoredList;
 
 
 /***/ }),
@@ -2007,15 +2106,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Store = void 0;
+exports.TopStore = exports.ChildStore = exports.AbstractStore = void 0;
 const rxjs_1 = __webpack_require__(/*! rxjs */ "rxjs");
 const entity_1 = __webpack_require__(/*! ./entity */ "./source/entity/index.ts");
-class Store {
-    constructor(name, finalize, promiseCtr, parent = null) {
+class AbstractStore {
+    constructor(name, finalize, promiseCtr) {
         this.name = name;
         this.finalize = finalize;
         this.promiseCtr = promiseCtr;
-        this.parent = parent;
         this._items = new Map();
         this.insersions = new rxjs_1.Subject();
         this.emptyInsersions = new rxjs_1.Subject();
@@ -2076,23 +2174,7 @@ class Store {
             return false;
         }
         else {
-            if (this.parent) {
-                const parentFlow = this.parent.get(id);
-                item.entity = entity_1.toEntity(new entity_1.ChildEntityImpl({
-                    data, ready: false,
-                    parentPromise: {
-                        then: (setParent) => {
-                            var _a;
-                            const subscription = parentFlow.observable.subscribe(parent => setParent(parent));
-                            (_a = item.parentSubscription) === null || _a === void 0 ? void 0 : _a.unsubscribe();
-                            item.parentSubscription = subscription;
-                        }
-                    }
-                }));
-            }
-            else {
-                item.entity = entity_1.toEntity(new entity_1.EntityImpl(data));
-            }
+            this.setItemEntity(id, data, item);
             const entity = item.entity;
             item.ready = true;
             item.observers.forEach(subscriber => subscriber.next(entity));
@@ -2112,18 +2194,8 @@ class Store {
         this._items.set(newId, item);
         (_a = entity_1.getEntity(item.entity)) === null || _a === void 0 ? void 0 : _a.setParent();
         (_b = item.parentSubscription) === null || _b === void 0 ? void 0 : _b.unsubscribe();
-        if (this.parent) {
-            const parentFlow = this.parent.get(newId);
-            if (item.entity instanceof entity_1.ChildEntityImpl) {
-                const entity = item.entity;
-                item.parentSubscription = parentFlow.observable.subscribe(parent => {
-                    entity.setParent(parent);
-                });
-            }
-        }
-        // keep the locks in their places
+        this.linkParentNewId(oldId, newId, item);
     }
-    // remove(id: K); use a `deleted` field instead
     update(id, data) {
         var _a, _b;
         (_b = entity_1.getEntity((_a = this._items.get(id)) === null || _a === void 0 ? void 0 : _a.entity)) === null || _b === void 0 ? void 0 : _b.update(data);
@@ -2145,17 +2217,7 @@ class Store {
                     subscriber.next(item.entity);
             }
             else {
-                if (this.parent && !item.parentSubscription) {
-                    let run = !skipCurrent;
-                    // this._entities.set will not be runned when .next is invoked because it will be already unsubscribed
-                    item.parentSubscription = this.parent.get(id).observable.subscribe(parent => {
-                        item.entity = entity_1.toEntity(new entity_1.ChildEntityImpl({ data: {}, parent, ready: true }));
-                        this.emptyInsersions.next(item.id);
-                        if (run)
-                            observers.forEach(subscriber => subscriber.next(item.entity));
-                    });
-                    run = true;
-                }
+                this.subscribeToParent(id, item, skipCurrent);
             }
             return () => {
                 const id = item.id, i = observers.indexOf(subscriber);
@@ -2177,44 +2239,60 @@ class Store {
         }));
     }
 }
-exports.Store = Store;
-
-
-/***/ }),
-
-/***/ "./source/valued-observable.ts":
-/*!*************************************!*\
-  !*** ./source/valued-observable.ts ***!
-  \*************************************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.fromPromise = exports.pipe = exports.combine = exports.altern = exports.distinct = exports.map = exports.of = void 0;
-const rxjs_1 = __webpack_require__(/*! rxjs */ "rxjs");
-const operators_1 = __webpack_require__(/*! rxjs/operators */ "rxjs/operators");
-const altern_map_1 = __webpack_require__(/*! altern-map */ "./node_modules/altern-map/dist/esm/index.js");
-exports.of = (value) => Object.assign(rxjs_1.of(value), { value });
-exports.map = (o, p) => Object.defineProperty(o.pipe(operators_1.map(p)), 'value', { get: () => p(o.value) });
-exports.distinct = (o, eq) => Object.defineProperty(o.pipe(operators_1.distinctUntilChanged(eq)), 'value', { get: () => o.value });
-exports.altern = (o, p) => Object.defineProperty(o.pipe(altern_map_1.alternMap(p)), 'value', { get: () => p(o.value).value });
-exports.combine = (sources) => Object.defineProperty(rxjs_1.combineLatest(sources), 'value', { get: () => sources.map(s => s.value) });
-exports.pipe = (o, op) => Object.defineProperty(o.pipe(op), 'value', { get: () => o.value });
-exports.fromPromise = (p, value) => {
-    const observable = new rxjs_1.Observable(subs => {
-        let done = false;
-        subs.next(value);
-        p.then(v => {
-            if (!done)
-                subs.next(value = v);
-            subs.complete();
-        }, err => subs.error(err));
-        return () => { done = true; };
-    });
-    return observable;
-};
+exports.AbstractStore = AbstractStore;
+class ChildStore extends AbstractStore {
+    constructor(name, finalize, promiseCtr, parent) {
+        super(name, finalize, promiseCtr);
+        this.parent = parent;
+    }
+    setItemEntity(id, data, item) {
+        const parentFlow = this.parent.get(id);
+        item.entity = entity_1.toEntity(new entity_1.ChildEntityImpl({
+            data, ready: false,
+            parentPromise: {
+                then: (setParent) => {
+                    var _a;
+                    const subscription = parentFlow.observable.subscribe(parent => setParent(parent));
+                    (_a = item.parentSubscription) === null || _a === void 0 ? void 0 : _a.unsubscribe();
+                    item.parentSubscription = subscription;
+                }
+            }
+        }));
+    }
+    linkParentNewId(_oldId, newId, item) {
+        const parentFlow = this.parent.get(newId);
+        const entity = item.entity;
+        if (!entity)
+            return;
+        item.parentSubscription = parentFlow.observable.subscribe(parent => {
+            entity_1.getEntity(entity).setParent(parent);
+        });
+    }
+    subscribeToParent(id, item, skipCurrent) {
+        if (!item.parentSubscription) {
+            const observers = item.observers;
+            let run = !skipCurrent;
+            // this._entities.set will not be runned when .next is invoked because it will be already unsubscribed
+            item.parentSubscription = this.parent.get(id).observable.subscribe(parent => {
+                item.entity = entity_1.toEntity(new entity_1.ChildEntityImpl({ data: {}, parent, ready: true }));
+                this.emptyInsersions.next(item.id);
+                if (run)
+                    observers.forEach(subscriber => subscriber.next(item.entity));
+            });
+            run = true;
+        }
+    }
+}
+exports.ChildStore = ChildStore;
+class TopStore extends AbstractStore {
+    constructor(name, finalize, promiseCtr) { super(name, finalize, promiseCtr); }
+    setItemEntity(_id, data, item) {
+        item.entity = entity_1.toEntity(new entity_1.EntityImpl(data));
+    }
+    linkParentNewId() { }
+    subscribeToParent() { }
+}
+exports.TopStore = TopStore;
 
 
 /***/ }),

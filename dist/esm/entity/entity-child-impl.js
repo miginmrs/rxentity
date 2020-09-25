@@ -1,8 +1,8 @@
 import { BehaviorSubject, identity } from "rxjs";
 import { EntityAbstract } from "./entity-abstract";
-import { altern, map, of } from "../valued-observable";
+import { map, of } from "rxvalue";
 import { $rx, $rxMap, $levelOf } from "./entity-proxies";
-import { guard } from "../common";
+import { alternMap } from "altern-map";
 /**
  * Child entity class
  * @template T map of fields output types
@@ -50,7 +50,7 @@ export class ChildEntityImpl extends EntityAbstract {
                 return;
             (field ? [field] : Object.keys(this.rxSourceMap)).forEach(field => this.rxSource(field).next($rx(parent, field)));
         };
-        this.levelOf = (field) => altern(this.rxSource(field), (src) => src === this._parent?.[field] ? map($levelOf(this._parent, field), l => l + 1) : of(0));
+        this.levelOf = (field) => this.rxSource(field).pipe(alternMap((src) => src === this._parent?.[field] ? $levelOf(this._parent, field).pipe(map(l => l + 1, 0, true)) : of(0), {}, true));
         const rxMap = this.rxMap = {};
         const rxSourceMap = this.rxSourceMap = {};
         let keys;
@@ -59,7 +59,7 @@ export class ChildEntityImpl extends EntityAbstract {
             this._parent = parent;
             keys = Object.keys($rxMap(parent));
             keys.forEach((k) => {
-                const next = guard(k, k in data)
+                const next = k in data
                     ? new BehaviorSubject(data[k])
                     : $rx(parent, k);
                 rxSourceMap[k] = new BehaviorSubject(next);
@@ -77,7 +77,8 @@ export class ChildEntityImpl extends EntityAbstract {
     }
     createRx(k) {
         const rxSource = this.rxSource(k);
-        return Object.assign(altern(rxSource, identity), {
+        const zz = alternMap(identity, {}, true);
+        return Object.assign(rxSource.pipe(zz), {
             next: (x) => this._parent && rxSource.value === $rx(this._parent, k)
                 ? rxSource.next(new BehaviorSubject(x))
                 : rxSource.value.next(x)

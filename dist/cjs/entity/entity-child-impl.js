@@ -3,9 +3,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ChildEntityImpl = void 0;
 const rxjs_1 = require("rxjs");
 const entity_abstract_1 = require("./entity-abstract");
-const valued_observable_1 = require("../valued-observable");
+const rxvalue_1 = require("rxvalue");
 const entity_proxies_1 = require("./entity-proxies");
-const common_1 = require("../common");
+const altern_map_1 = require("altern-map");
 /**
  * Child entity class
  * @template T map of fields output types
@@ -53,7 +53,7 @@ class ChildEntityImpl extends entity_abstract_1.EntityAbstract {
                 return;
             (field ? [field] : Object.keys(this.rxSourceMap)).forEach(field => this.rxSource(field).next(entity_proxies_1.$rx(parent, field)));
         };
-        this.levelOf = (field) => valued_observable_1.altern(this.rxSource(field), (src) => src === this._parent?.[field] ? valued_observable_1.map(entity_proxies_1.$levelOf(this._parent, field), l => l + 1) : valued_observable_1.of(0));
+        this.levelOf = (field) => this.rxSource(field).pipe(altern_map_1.alternMap((src) => src === this._parent?.[field] ? entity_proxies_1.$levelOf(this._parent, field).pipe(rxvalue_1.map(l => l + 1, 0, true)) : rxvalue_1.of(0), {}, true));
         const rxMap = this.rxMap = {};
         const rxSourceMap = this.rxSourceMap = {};
         let keys;
@@ -62,7 +62,7 @@ class ChildEntityImpl extends entity_abstract_1.EntityAbstract {
             this._parent = parent;
             keys = Object.keys(entity_proxies_1.$rxMap(parent));
             keys.forEach((k) => {
-                const next = common_1.guard(k, k in data)
+                const next = k in data
                     ? new rxjs_1.BehaviorSubject(data[k])
                     : entity_proxies_1.$rx(parent, k);
                 rxSourceMap[k] = new rxjs_1.BehaviorSubject(next);
@@ -80,7 +80,8 @@ class ChildEntityImpl extends entity_abstract_1.EntityAbstract {
     }
     createRx(k) {
         const rxSource = this.rxSource(k);
-        return Object.assign(valued_observable_1.altern(rxSource, rxjs_1.identity), {
+        const zz = altern_map_1.alternMap(rxjs_1.identity, {}, true);
+        return Object.assign(rxSource.pipe(zz), {
             next: (x) => this._parent && rxSource.value === entity_proxies_1.$rx(this._parent, k)
                 ? rxSource.next(new rxjs_1.BehaviorSubject(x))
                 : rxSource.value.next(x)

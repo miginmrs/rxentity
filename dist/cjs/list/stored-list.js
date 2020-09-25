@@ -1,10 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.StoredList = void 0;
+exports.ChildStoredList = exports.TopStoredList = exports.AbstractStoredList = void 0;
 const rxjs_1 = require("rxjs");
 const operators_1 = require("rxjs/operators");
 const common_1 = require("../common");
-class StoredList {
+class AbstractStoredList {
     /**
      * @param {Params} params
      */
@@ -13,27 +13,7 @@ class StoredList {
         this.list = null;
         this.subscriber = null;
         this.donePromises = [];
-        this.parentSubscriber = () => new this.promiseCtr((resolve, reject) => {
-            this.parentSubsctiption = this.parent?.entities.subscribe(async (parentList) => {
-                const key = this.key;
-                const flowList = parentList.list.map(e => this.keys.mapTo(k => this.stores[k].get(this.keyofEntity(k, e[k]))));
-                const entitiesSet = new Set(this.list?.data.map(u => u.entity[key]));
-                const parentEntities = await this.toPromise(flowList);
-                const newIds = parentEntities.filter(e => !entitiesSet.has(e.entity[key])).map(e => this.keys.mapTo(k => this.keyofEntity(k, e.entity[k])));
-                // console.log('newIds', newIds, this.store);
-                const newEntities = await this.toPromise(newIds.map(id => this.keys.mapTo((k) => this.stores[k].get(id[k]))));
-                // unsubscribe after new subscription made to reuse recently created entities
-                parentEntities.forEach(s => s.subscription.unsubscribe());
-                if (!this.list)
-                    return reject();
-                const newList = this.merge(key, this.list.data, newEntities);
-                this.list = { data: newList, status: this._status(this.list.status, parentList.status) };
-                this.subscriber?.next({ list: this.list.data.map(({ entity }) => entity), status: this.list.status });
-                return resolve(this.list.status);
-            });
-        });
         this.entities = new rxjs_1.Observable(subscriber => {
-            console.log('+++ subscribing', this.stores);
             this.list = { data: [], status: undefined };
             this.subscriber = subscriber;
             this.reload();
@@ -43,7 +23,6 @@ class StoredList {
                 this.subscriber = null;
                 this.list?.data.forEach(e => e.subscription.unsubscribe());
                 this.list = null;
-                console.log('xxx unsubscribed', this.stores);
             };
         }).pipe(operators_1.shareReplay({ bufferSize: 1, refCount: true }));
         this._exec = (n, err, from, to) => common_1.asAsync(function* () {
@@ -63,40 +42,25 @@ class StoredList {
                 if (!n)
                     this.list.data.forEach(e => e.subscription.unsubscribe());
                 this.list = { data: oldList.concat(list), status: retrieved.done };
-                if (retrieved.done === undefined && this.parent)
-                    try {
-                        const parentDone = yield* common_1.wait(this.parentSubsctiption ? this.parent.exec(n, null) : this.parentSubscriber());
-                        return parentDone;
-                    }
-                    catch (e) {
-                        // unsubscribed while retrieving data from parent
-                        return true;
-                    }
-                else {
+                const process = () => {
+                    if (!this.list)
+                        throw new Error('Unexpected state');
                     this.subscriber.next({ list: this.list.data.map(e => e.entity), status: this.list.status });
                     return retrieved.done;
-                }
+                };
+                return retrieved.done === undefined ? yield* this.fromParent(n, process) : process();
             }
             catch (e) {
                 if (!this._setDone(n, done, this.list))
                     return yield* common_1.wait(done[0]);
                 this.list.status = null;
-                if (!this.parent)
-                    throw e;
-                try {
-                    const parentDone = yield* common_1.wait(this.parentSubsctiption ? this.parent.exec(n, e) : this.parentSubscriber());
-                    return this._status(null, parentDone);
-                }
-                catch (e) {
-                    // unsubscribed while retrieving data from parent
-                    return true;
-                }
+                return yield* this.handleError(n, e);
             }
             finally {
                 this.donePromises[n] = undefined;
             }
         }, this.promiseCtr, this)();
-        const { key, merge, retrieve, parent, keyof, keyofEntity, stores, promiseCtr } = params;
+        const { key, merge, retrieve, keyof, keyofEntity, stores, promiseCtr } = params;
         this.keyof = keyof;
         this.keyofEntity = keyofEntity;
         this.stores = stores;
@@ -104,7 +68,6 @@ class StoredList {
         this.retrieve = retrieve;
         this.key = key;
         this.merge = merge;
-        this.parent = parent;
         this.promiseCtr = promiseCtr;
     }
     add(entity) {
@@ -115,7 +78,8 @@ class StoredList {
         const subscription = new rxjs_1.Subscription();
         const stores = this.stores;
         new common_1.Keys(entity).keys.forEach(k => {
-            subscription.add(stores[k].get(id).observable.subscribe());
+            const obs = stores[k].get(id).observable;
+            subscription.add(obs.subscribe());
         });
         this.list = { data: [{ entity, subscription }, ...this.list.data], status: this.list.status };
         this.subscriber?.next({ list: this.list.data.map(e => e.entity), status: this.list.status });
@@ -132,11 +96,12 @@ class StoredList {
         }
     }
     toPromise(flowList) {
-        return this.promiseCtr.all(flowList.map(async (entitiesFlow) => {
+        const entitiesWithSubs = flowList.map(common_1.asAsync(function* (entitiesFlow) {
             const subscription = new rxjs_1.Subscription();
             const entity = this.keys.asyncMapTo((k) => new this.promiseCtr(res => entitiesFlow[k].observable.subscribe(res)), this.promiseCtr);
-            return entity.then((entity) => ({ subscription, entity }));
-        }));
+            return yield* common_1.wait(entity.then((entity) => ({ subscription, entity })));
+        }, this.promiseCtr, this));
+        return this.promiseCtr.all(entitiesWithSubs);
     }
     _status(child, parent) {
         return child === null ? null : child ?? parent;
@@ -171,5 +136,59 @@ class StoredList {
         return (this.donePromises[n] || (this.donePromises[n] = this._exec(n, err, from, to)));
     }
 }
-exports.StoredList = StoredList;
+exports.AbstractStoredList = AbstractStoredList;
+class TopStoredList extends AbstractStoredList {
+    *handleError(_n, e) { throw e; }
+    *fromParent(_n, process) { return process(); }
+}
+exports.TopStoredList = TopStoredList;
+class ChildStoredList extends AbstractStoredList {
+    constructor(params) {
+        super(params);
+        this.parentSubscriber = () => new this.promiseCtr((resolve, reject) => {
+            this.parentSubsctiption = this.parent?.entities.subscribe(parentList => common_1.asAsync(function* () {
+                const key = this.key;
+                const flowList = parentList.list.map(e => this.keys.mapTo((k) => {
+                    const stores = this.stores;
+                    return stores[k].get(this.keyofEntity(k, e[k]));
+                }));
+                const entitiesSet = new Set(this.list?.data.map(u => u.entity[key]));
+                const parentEntities = yield* common_1.wait(this.toPromise(flowList));
+                const newIds = parentEntities.filter(e => !entitiesSet.has(e.entity[key])).map(e => this.keys.mapTo(k => this.keyofEntity(k, e.entity[k])));
+                // console.log('newIds', newIds, this.store);
+                const newEntities = yield* common_1.wait(this.toPromise(newIds.map(id => this.keys.mapTo((k) => this.stores[k].get(id[k])))));
+                // unsubscribe after new subscription made to reuse recently created entities
+                parentEntities.forEach(s => s.subscription.unsubscribe());
+                if (!this.list)
+                    return reject();
+                const newList = this.merge(key, this.list.data, newEntities);
+                this.list = { data: newList, status: this._status(this.list.status, parentList.status) };
+                this.subscriber?.next({ list: this.list.data.map(({ entity }) => entity), status: this.list.status });
+                return resolve(this.list.status);
+            }, this.promiseCtr, this)());
+        });
+        this.parent = params.parent;
+    }
+    *fromParent(n) {
+        try {
+            const parentDone = yield* common_1.wait(this.parentSubsctiption ? this.parent.exec(n, null) : this.parentSubscriber());
+            return parentDone;
+        }
+        catch (e) {
+            // unsubscribed while retrieving data from parent
+            return true;
+        }
+    }
+    *handleError(n, e) {
+        try {
+            const parentDone = yield* common_1.wait(this.parentSubsctiption ? this.parent.exec(n, e) : this.parentSubscriber());
+            return this._status(null, parentDone);
+        }
+        catch (e) {
+            // unsubscribed while retrieving data from parent
+            return true;
+        }
+    }
+}
+exports.ChildStoredList = ChildStoredList;
 //# sourceMappingURL=stored-list.js.map

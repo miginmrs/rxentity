@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EntityAbstract = void 0;
-const valued_observable_1 = require("../valued-observable");
+const rxvalue_1 = require("rxvalue");
 /**
  * Entity base class
  * @template T map of fields output types
@@ -21,7 +21,7 @@ class EntityAbstract {
         /** define the parent of the entity */
         this.setParent = () => { };
         /** get the number of entities between the actual and the source of the field */
-        this.levelOf = (_field) => valued_observable_1.of(0);
+        this.levelOf = (_field) => rxvalue_1.of(0);
     }
     /** a `getter` snapshot for all the entity `fields` */
     get snapshot() {

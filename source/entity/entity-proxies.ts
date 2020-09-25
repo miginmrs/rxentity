@@ -1,7 +1,7 @@
 import { alternMap } from "altern-map";
 import { Observable } from "rxjs";
 import { EntityAbstract } from "./entity-abstract";
-import { ValuedSubject } from "../valued-observable";
+import { ValuedSubject } from "rxvalue";
 import { Rec } from "../common";
 
 declare const $entity: unique symbol;

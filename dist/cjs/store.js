@@ -1,14 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Store = void 0;
+exports.TopStore = exports.ChildStore = exports.AbstractStore = void 0;
 const rxjs_1 = require("rxjs");
 const entity_1 = require("./entity");
-class Store {
-    constructor(name, finalize, promiseCtr, parent = null) {
+class AbstractStore {
+    constructor(name, finalize, promiseCtr) {
         this.name = name;
         this.finalize = finalize;
         this.promiseCtr = promiseCtr;
-        this.parent = parent;
         this._items = new Map();
         this.insersions = new rxjs_1.Subject();
         this.emptyInsersions = new rxjs_1.Subject();
@@ -68,22 +67,7 @@ class Store {
             return false;
         }
         else {
-            if (this.parent) {
-                const parentFlow = this.parent.get(id);
-                item.entity = entity_1.toEntity(new entity_1.ChildEntityImpl({
-                    data, ready: false,
-                    parentPromise: {
-                        then: (setParent) => {
-                            const subscription = parentFlow.observable.subscribe(parent => setParent(parent));
-                            item.parentSubscription?.unsubscribe();
-                            item.parentSubscription = subscription;
-                        }
-                    }
-                }));
-            }
-            else {
-                item.entity = entity_1.toEntity(new entity_1.EntityImpl(data));
-            }
+            this.setItemEntity(id, data, item);
             const entity = item.entity;
             item.ready = true;
             item.observers.forEach(subscriber => subscriber.next(entity));
@@ -102,18 +86,8 @@ class Store {
         this._items.set(newId, item);
         entity_1.getEntity(item.entity)?.setParent();
         item.parentSubscription?.unsubscribe();
-        if (this.parent) {
-            const parentFlow = this.parent.get(newId);
-            if (item.entity instanceof entity_1.ChildEntityImpl) {
-                const entity = item.entity;
-                item.parentSubscription = parentFlow.observable.subscribe(parent => {
-                    entity.setParent(parent);
-                });
-            }
-        }
-        // keep the locks in their places
+        this.linkParentNewId(oldId, newId, item);
     }
-    // remove(id: K); use a `deleted` field instead
     update(id, data) {
         entity_1.getEntity(this._items.get(id)?.entity)?.update(data);
     }
@@ -134,17 +108,7 @@ class Store {
                     subscriber.next(item.entity);
             }
             else {
-                if (this.parent && !item.parentSubscription) {
-                    let run = !skipCurrent;
-                    // this._entities.set will not be runned when .next is invoked because it will be already unsubscribed
-                    item.parentSubscription = this.parent.get(id).observable.subscribe(parent => {
-                        item.entity = entity_1.toEntity(new entity_1.ChildEntityImpl({ data: {}, parent, ready: true }));
-                        this.emptyInsersions.next(item.id);
-                        if (run)
-                            observers.forEach(subscriber => subscriber.next(item.entity));
-                    });
-                    run = true;
-                }
+                this.subscribeToParent(id, item, skipCurrent);
             }
             return () => {
                 const id = item.id, i = observers.indexOf(subscriber);
@@ -166,5 +130,57 @@ class Store {
         }));
     }
 }
-exports.Store = Store;
+exports.AbstractStore = AbstractStore;
+class ChildStore extends AbstractStore {
+    constructor(name, finalize, promiseCtr, parent) {
+        super(name, finalize, promiseCtr);
+        this.parent = parent;
+    }
+    setItemEntity(id, data, item) {
+        const parentFlow = this.parent.get(id);
+        item.entity = entity_1.toEntity(new entity_1.ChildEntityImpl({
+            data, ready: false,
+            parentPromise: {
+                then: (setParent) => {
+                    const subscription = parentFlow.observable.subscribe(parent => setParent(parent));
+                    item.parentSubscription?.unsubscribe();
+                    item.parentSubscription = subscription;
+                }
+            }
+        }));
+    }
+    linkParentNewId(_oldId, newId, item) {
+        const parentFlow = this.parent.get(newId);
+        const entity = item.entity;
+        if (!entity)
+            return;
+        item.parentSubscription = parentFlow.observable.subscribe(parent => {
+            entity_1.getEntity(entity).setParent(parent);
+        });
+    }
+    subscribeToParent(id, item, skipCurrent) {
+        if (!item.parentSubscription) {
+            const observers = item.observers;
+            let run = !skipCurrent;
+            // this._entities.set will not be runned when .next is invoked because it will be already unsubscribed
+            item.parentSubscription = this.parent.get(id).observable.subscribe(parent => {
+                item.entity = entity_1.toEntity(new entity_1.ChildEntityImpl({ data: {}, parent, ready: true }));
+                this.emptyInsersions.next(item.id);
+                if (run)
+                    observers.forEach(subscriber => subscriber.next(item.entity));
+            });
+            run = true;
+        }
+    }
+}
+exports.ChildStore = ChildStore;
+class TopStore extends AbstractStore {
+    constructor(name, finalize, promiseCtr) { super(name, finalize, promiseCtr); }
+    setItemEntity(_id, data, item) {
+        item.entity = entity_1.toEntity(new entity_1.EntityImpl(data));
+    }
+    linkParentNewId() { }
+    subscribeToParent() { }
+}
+exports.TopStore = TopStore;
 //# sourceMappingURL=store.js.map

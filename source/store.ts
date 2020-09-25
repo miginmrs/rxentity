@@ -1,4 +1,4 @@
-import { Observable, TeardownLogic, Subscriber, Subscription, Subject } from 'rxjs';
+import { Observable, TeardownLogic, Subscriber, Subscription, Subject, of } from 'rxjs';
 import { PromiseCtr, Rec } from './common';
 import { EntityFlow, Entity, ChildEntityImpl, EntityImpl, entityFlow, toEntity, EntityAbstract, $rewind, $update, getEntity } from "./entity";
 
@@ -6,22 +6,23 @@ interface IStore<ID, K extends string, T extends Rec<K>, V extends T> {
   get(id: ID, skipCurrent?: true): EntityFlow<K, T, V>;
 }
 
-export type DepEntityImpl<K extends string, T extends Rec<K>, P extends T, V extends T> = never extends P
-  ? EntityAbstract<K, T, V> : ChildEntityImpl<K, T, P, V, never, Entity<K, P, any, any>>;
+type DepEntityImpl<K extends string, T extends Rec<K>, V extends T, child extends boolean, P extends T> = child extends true
+  ? ChildEntityImpl<K, T, V, P, EntityAbstract<K, P, any>> : EntityAbstract<K, T, V>;
 
-export class Store<ID, K extends string, T extends Rec<K>, P extends T = never, V extends T = T, impl extends DepEntityImpl<K, T, P, V> = DepEntityImpl<K, T, P, V>> implements IStore<ID, K, T, V> {
-  private _items = new Map<ID, {
-    id: ID, observers: Subscriber<Entity<K, T, V>>[], entity?: Entity<K, T, V, impl>,
-    next?: PromiseLike<void>, parentSubscription?: Subscription, closed?: true, ready?: true;
-  }>();
+type Item<ID, K extends string, T extends Rec<K>, V extends T, impl extends EntityAbstract<K, T, V>> = {
+  id: ID, observers: Subscriber<Entity<K, T, V>>[], entity?: Entity<K, T, V, impl>,
+  next?: PromiseLike<void>, parentSubscription?: Subscription, closed?: true, ready?: true;
+}
+
+export abstract class AbstractStore<ID, K extends string, T extends Rec<K>, V extends T, impl extends EntityAbstract<K, T, V>> implements IStore<ID, K, T, V> {
+  protected _items = new Map<ID, Item<ID, K, T, V, impl>>();
   readonly insersions = new Subject<ID[]>();
   readonly emptyInsersions = new Subject<ID>();
 
   constructor(
     readonly name: string,
-    private finalize: (id: ID, entity: Entity<K, T, V>) => void,
+    private finalize: (id: ID, entity: Entity<K, T, V, impl>) => void,
     readonly promiseCtr: PromiseCtr,
-    readonly parent: IStore<ID, K, P, any> | null = null,
   ) { }
 
   rewind(id: ID) {
@@ -79,27 +80,17 @@ export class Store<ID, K extends string, T extends Rec<K>, P extends T = never, 
       item.ready = true;
       return false;
     } else {
-      if (this.parent) {
-        const parentFlow = this.parent.get(id);
-        item.entity = toEntity<K, T, V, ChildEntityImpl<K, T, P, V, K>>(new ChildEntityImpl<K, T, P, V, K>({
-          data, ready: false, parentPromise: {
-            then: (setParent: (parent: Entity<K, P, any>) => void) => {
-              const subscription = parentFlow.observable.subscribe(parent => setParent(parent));
-              item.parentSubscription?.unsubscribe();
-              item.parentSubscription = subscription;
-            }
-          }
-        })) as Entity<K, T, V, impl>;
-      } else {
-        item.entity = toEntity<K, T, V, EntityImpl<K, T, V>>(
-          new EntityImpl<K, T, V>(data)) as Entity<K, T, V, impl>;
-      }
-      const entity: Entity<K, T, V> = item.entity;
+      this.setItemEntity(id, data, item);
+      const entity = item.entity;
       item.ready = true;
       item.observers.forEach(subscriber => subscriber.next(entity));
       return true;
     }
   }
+
+  abstract setItemEntity(id: ID, data: V, item: Item<ID, K, T, V, impl>): void;
+  abstract linkParentNewId(oldId: ID, newId: ID, item: Item<ID, K, T, V, impl>): void;
+  abstract subscribeToParent(id: ID, item: Item<ID, K, T, V, impl>, skipCurrent?: true): void;
 
   updateId(oldId: ID, newId: ID) {
     /** @TODO consider when newId is taken */
@@ -111,19 +102,8 @@ export class Store<ID, K extends string, T extends Rec<K>, P extends T = never, 
     this._items.set(newId, item);
     getEntity(item.entity)?.setParent();
     item.parentSubscription?.unsubscribe();
-    if (this.parent) {
-      const parentFlow = this.parent.get(newId);
-      if (item.entity instanceof ChildEntityImpl) {
-        const entity = item.entity as ChildEntityImpl<K, T, P, V, K>;
-        item.parentSubscription = parentFlow.observable.subscribe(parent => {
-          entity.setParent(parent);
-        });
-      }
-    }
-    // keep the locks in their places
+    this.linkParentNewId(oldId, newId, item);
   }
-
-  // remove(id: K); use a `deleted` field instead
 
   update<M extends K>(id: ID, data: Pick<V, M>) {
     getEntity(this._items.get(id)?.entity)?.update(data);
@@ -144,17 +124,7 @@ export class Store<ID, K extends string, T extends Rec<K>, P extends T = never, 
         if (item.entity) {
           if (!skipCurrent) subscriber.next(item.entity);
         } else {
-          if (this.parent && !item.parentSubscription) {
-            let run = !skipCurrent;
-            // this._entities.set will not be runned when .next is invoked because it will be already unsubscribed
-            item.parentSubscription = this.parent.get(id).observable.subscribe(parent => {
-              item.entity = toEntity(
-                new ChildEntityImpl<K, T, P, V, never>({ data: {}, parent, ready: true })) as Entity<K, T, V, impl>;
-              this.emptyInsersions.next(item.id);
-              if (run) observers.forEach(subscriber => subscriber.next(item.entity));
-            });
-            run = true;
-          }
+          this.subscribeToParent(id, item, skipCurrent);
         }
         return () => {
           const id = item.id, i = observers.indexOf(subscriber);
@@ -174,4 +144,69 @@ export class Store<ID, K extends string, T extends Rec<K>, P extends T = never, 
         };
       }));
   }
+}
+
+
+export class ChildStore<ID, K extends string, T extends Rec<K>, V extends T, P extends T, pimpl extends EntityAbstract<K, P, any>, PS extends AbstractStore<ID, K, P, any, pimpl>> extends AbstractStore<ID, K, T, V, ChildEntityImpl<K, T, V, P, pimpl>> {
+
+  constructor(
+    name: string,
+    finalize: (id: ID, entity: Entity<K, T, V, ChildEntityImpl<K, T, V, P, pimpl>>) => void,
+    promiseCtr: PromiseCtr,
+    readonly parent: PS,
+  ) { super(name, finalize, promiseCtr) }
+
+  setItemEntity(id: ID, data: V, item: Item<ID, K, T, V, ChildEntityImpl<K, T, V, P, pimpl>>) {
+    const parentFlow = this.parent.get(id);
+    item.entity = toEntity(new ChildEntityImpl<K, T, V, P, pimpl>({
+      data, ready: false, parentPromise: {
+        then: (setParent: (parent: Entity<K, P, any, pimpl>) => void) => {
+          const subscription = parentFlow.observable.subscribe(parent => setParent(parent));
+          item.parentSubscription?.unsubscribe();
+          item.parentSubscription = subscription;
+        }
+      }
+    }));
+  }
+
+  linkParentNewId(_oldId: ID, newId: ID, item: Item<ID, K, T, V, ChildEntityImpl<K, T, V, P, pimpl>>) {
+    const parentFlow = this.parent.get(newId);
+    const entity = item.entity;
+    if (!entity) return;
+    item.parentSubscription = parentFlow.observable.subscribe(parent => {
+      getEntity(entity).setParent(parent);
+    });
+  }
+
+  subscribeToParent(id: ID, item: Item<ID, K, T, V, ChildEntityImpl<K, T, V, P, pimpl>>, skipCurrent?: true) {
+    if (!item.parentSubscription) {
+      const observers = item.observers;
+      let run = !skipCurrent;
+      // this._entities.set will not be runned when .next is invoked because it will be already unsubscribed
+      item.parentSubscription = this.parent.get(id).observable.subscribe(parent => {
+        item.entity = toEntity(new ChildEntityImpl<K, T, V, P, pimpl>({ data: {}, parent, ready: true }));
+        this.emptyInsersions.next(item.id);
+        if (run) observers.forEach(subscriber => subscriber.next(item.entity));
+      });
+      run = true;
+    }
+  }
+}
+
+export class TopStore<ID, K extends string, T extends Rec<K>, V extends T = T> extends AbstractStore<ID, K, T, V, EntityImpl<K, T, V>> {
+  constructor(
+    name: string,
+    finalize: (id: ID, entity: Entity<K, T, V, EntityImpl<K, T, V>>) => void,
+    promiseCtr: PromiseCtr,
+  ) { super(name, finalize, promiseCtr) }
+
+  setItemEntity(_id: ID, data: V, item: Item<ID, K, T, V, EntityImpl<K, T, V>>) {
+    item.entity = toEntity<K, T, V, EntityImpl<K, T, V>>(
+      new EntityImpl<K, T, V>(data)) as Entity<K, T, V, EntityImpl<K, T, V>>;
+  }
+
+  linkParentNewId() { }
+
+  subscribeToParent() { }
+
 }

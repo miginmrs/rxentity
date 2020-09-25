@@ -1,11 +1,24 @@
 import type { Observable, Subscription } from 'rxjs';
 import { TRec } from '../common';
-import type { EntityFlow, Entity } from '../entity';
-import type { Store } from '../store';
+import type { EntityFlow, Entity, EntityAbstract, ChildEntityImpl, EntityImpl } from '../entity';
+import type { AbstractStore, ChildStore, TopStore } from '../store';
 
-export type Entities<K extends string, KK extends Record<K, string>, T extends TRec<K, KK>, V extends T> = { [k in K]: Entity<KK[k], T[k], V[k]> };
-export type EntitiesFlow<K extends string, KK extends Record<K, string>, T extends TRec<K, KK>, V extends T> = { [k in K]: EntityFlow<KK[k], T[k], V[k]>; };
-export type Stores<K extends string, ID extends Pick<any, K>, KK extends Record<K, string>, T extends TRec<K, KK>, P extends T = never, V extends T = T> = { [k in K]: Store<ID[k], KK[k], T[k], P[k], V[k]> };
+export type Entities<K extends string, KK extends Record<K, string>, T extends TRec<K, KK>, V extends T, impl extends { [k in K]: EntityAbstract<KK[k], T[k], V[k]> } = { [k in K]: EntityAbstract<KK[k], T[k], V[k]> }> = {
+  [k in K]: Entity<KK[k], T[k], V[k], impl[k] & EntityAbstract<KK[k], T[k], V[k]>> };
+export type EntitiesFlow<K extends string, KK extends Record<K, string>, T extends TRec<K, KK>, V extends T, impl extends { [k in K]: EntityAbstract<KK[k], T[k], V[k]> } = { [k in K]: EntityAbstract<KK[k], T[k], V[k]> }> = {
+  [k in K]: EntityFlow<KK[k], T[k], V[k], impl[k] & EntityAbstract<KK[k], T[k], V[k]>>; };
+export type AbstractEntities<K extends string, KK extends Record<K, string>, T extends TRec<K, KK>, V extends T>
+  = { [k in K]: EntityAbstract<KK[k], T[k], V[k]> };
+export type EntitiesImpl<K extends string, KK extends Record<K, string>, T extends TRec<K, KK>, V extends T>
+  = { [k in K]: EntityImpl<KK[k], T[k], V[k]> };
+export type ChildEntitiesImpl<K extends string, KK extends Record<K, string>, T extends TRec<K, KK>, V extends T, P extends T, pimpl extends AbstractEntities<K, KK, P, any>>
+  = { [k in K]: ChildEntityImpl<KK[k], T[k], V[k], P[k], pimpl[k] & EntityAbstract<KK[k], P[k], any>> };
+export type ChildStores<K extends string, ID extends Pick<any, K>, KK extends Record<K, string>, T extends TRec<K, KK>, V extends T, P extends T, pimpl extends AbstractEntities<K, KK, P, any>, PS extends AbstractStores<K, ID, KK, P, any, pimpl>>
+  = { [k in K]: ChildStore<ID[k], KK[k], T[k], V[k], P[k], pimpl[k] & EntityAbstract<KK[k], P[k], any>, PS[k] & AbstractStore<ID[k], KK[k], P[k], any, pimpl[k] & EntityAbstract<KK[k], P[k], any>>> };
+export type TopStores<K extends string, ID extends Pick<any, K>, KK extends Record<K, string>, T extends TRec<K, KK>, V extends T>
+  = { [k in K]: TopStore<ID[k], KK[k], T[k], V[k]> };
+export type AbstractStores<K extends string, ID extends Pick<any, K>, KK extends Record<K, string>, T extends TRec<K, KK>, V extends T, impl extends AbstractEntities<K, KK, T, V>>
+  = { [k in K]: AbstractStore<ID[k], KK[k], T[k], V[k], impl[k] & EntityAbstract<KK[k], T[k], V[k]>> };
 
 /**
  * The status of the completude of the list:
@@ -16,15 +29,15 @@ export type Stores<K extends string, ID extends Pick<any, K>, KK extends Record<
  */
 export type ListStatus = boolean | null | undefined;
 
-export interface EntityList<K extends string, ID extends Pick<any, K>, KK extends Record<K, string>, T extends TRec<K, KK>, V extends T = T> {
-  readonly entities: Observable<{ list: Entities<K, KK, T, V>[], status: ListStatus; }>;
+export interface EntityList<K extends string, ID extends Pick<any, K>, KK extends Record<K, string>, T extends TRec<K, KK>, V extends T = T, impl extends AbstractEntities<K, KK, T, V> = AbstractEntities<K, KK, T, V>> {
+  readonly entities: Observable<{ list: Entities<K, KK, T, V, impl>[], status: ListStatus; }>;
   readonly reloadPromise?: PromiseLike<ListStatus>;
   readonly morePromise?: PromiseLike<ListStatus>;
-  exec(n: number, err: any, from?: Entities<K, KK, T, V>, to?: Entities<K, KK, T, V>): PromiseLike<ListStatus>;
+  exec(n: number, err: any, from?: Entities<K, KK, T, V, impl>, to?: Entities<K, KK, T, V, impl>): PromiseLike<ListStatus>;
   reload(err?: any): PromiseLike<ListStatus>;
   more(err?: any): PromiseLike<ListStatus>;
   keyof: <k extends K>(k: k, data: V[k]) => ID[k];
-  keyofEntity: <k extends K>(k: k, data: Entity<KK[k], T[k], V[k]>) => ID[k];
-  add(entity: Entities<K, KK, T, V>, subscription: Subscription): void;
-  remove(entity: Entities<K, KK, T, V>): void;
+  keyofEntity: <k extends K>(k: k, data: Entity<KK[k], T[k], V[k], impl[k] & EntityAbstract<KK[k], T[k], V[k]>>) => ID[k];
+  add(entity: Entities<K, KK, T, V, impl>, subscription: Subscription): void;
+  remove(entity: Entities<K, KK, T, V, impl>): void;
 }
