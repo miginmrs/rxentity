@@ -47,7 +47,7 @@ describe('Entity', () => {
     describe('Parent ready', () => {
       type ChildUser = { name: string, phone: string, login?: undefined };
       type AnyUser = User | ChildUser;
-      const child = toEntity(new ChildEntityImpl<keys, AnyUser, User, ChildUser, 'login'>({
+      const child = toEntity(new ChildEntityImpl<keys, AnyUser, ChildUser, User>({
         parent: user, data: { login: undefined }, ready: true
       }));
       it('should inherit keys', () => {
@@ -88,7 +88,7 @@ describe('Entity', () => {
       type AnyUser = User | ChildUser;
       let parentSetter!: (parent: Entity<keys, User, any>) => void;
       const childData = { firstName: 'fn', lastName: 'ln', name: 13 };
-      const child = toEntity(new ChildEntityImpl<keys, AnyUser, User, ChildUser, never>({
+      const child = toEntity(new ChildEntityImpl<keys, AnyUser, ChildUser, User>({
         data: childData, parentPromise: { then: (setParent) => parentSetter = setParent }, ready: false,
       }));
       it('should have a consistent snapshot', () => {

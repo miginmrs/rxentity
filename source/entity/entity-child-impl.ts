@@ -11,7 +11,7 @@ import { guard, Rec } from "../common";
  * @template V map of fields input types
  * @template I union of initial field keys
  */
-export class ChildEntityImpl<K extends string, T extends Rec<K>, P extends T, V extends T, I extends K, PE extends Entity<K, P, any> = Entity<K, P, any>> extends EntityAbstract<K, T, V> {
+export class ChildEntityImpl<K extends string, T extends Rec<K>, V extends T, P extends T, pimpl extends EntityAbstract<K, P, any> = EntityAbstract<K, P, any>> extends EntityAbstract<K, T, V> {
   readonly rx: EntityFieldsFct<K, T, V> = <k extends K>(k: k) => {
     return this.rxMap[k] || (this.rxMap[k] = this.createRx(k));
   };
@@ -33,7 +33,7 @@ export class ChildEntityImpl<K extends string, T extends Rec<K>, P extends T, V 
     );
   };
   private rxSourceMap: { [k in keyof T]: BehaviorSubject<ValuedSubject<T[k], V[k]>> };
-  private _parent: PE | undefined = undefined;
+  private _parent: Entity<K, P, any, pimpl> | undefined = undefined;
   get parent() { return this._parent; };
 
   get local() {
@@ -50,11 +50,11 @@ export class ChildEntityImpl<K extends string, T extends Rec<K>, P extends T, V 
 
   constructor(params: {
     data: V;
-    parentPromise: { then: (setParent: (parent: PE) => void) => void; };
+    parentPromise: { then: (setParent: (parent: Entity<K, P, any, pimpl>) => void) => void; };
     ready: false;
   } | {
-    data: { [k in I]: V[k] };
-    parent: PE;
+    data: { [k in K]?: V[k] };
+    parent: Entity<K, P, any, pimpl>;
     ready: true;
   }) {
     super();
@@ -66,7 +66,7 @@ export class ChildEntityImpl<K extends string, T extends Rec<K>, P extends T, V 
       this._parent = parent;
       keys = Object.keys($rxMap(parent)) as K[];
       keys.forEach(<k extends K>(k: k) => {
-        const next: ValuedSubject<T[k], V[k]> = guard<keyof T, I>(k, k in data)
+        const next: ValuedSubject<T[k], V[k]> =  k in data
           ? new BehaviorSubject(data[k] as V[k])
           : $rx(parent, k);
         rxSourceMap[k] = new BehaviorSubject(next);
@@ -82,7 +82,7 @@ export class ChildEntityImpl<K extends string, T extends Rec<K>, P extends T, V 
     keys.forEach(<k extends K>(k: k) => rxMap[k] = this.createRx(k));
   }
 
-  setParent = (parent?: PE) => {
+  setParent = (parent?: Entity<K, P, any, pimpl>) => {
     const oldParent = this.parent;
     this._parent = parent;
     const rxSourceMap = this.rxSourceMap;

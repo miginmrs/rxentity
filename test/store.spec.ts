@@ -3,14 +3,14 @@ import { assert, expect } from "chai";
 import { Subject, Subscription } from "rxjs";
 import { take } from "rxjs/operators";
 import { $snapshot } from "../source/entity";
-import { Store } from "../source/store"
+import { TopStore } from "../source/store"
 
 const one = BigInt(1), two = BigInt(2);
 
 Bluebird.setScheduler(fn => fn());
 describe('Store', () => {
   type User = { name: string, login: string };
-  const store = new Store<bigint, keyof User, User>('A', (id, entity) => { }, Bluebird);
+  const store = new TopStore<bigint, keyof User, User>('A', (id, entity) => { }, Bluebird);
   const storeItems = store['_items'];
   it('should implemenet prepare correctly', async () => {
     const actions: number[] = [];
