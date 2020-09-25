@@ -21,7 +21,7 @@ export abstract class AbstractStore<ID, K extends string, T extends Rec<K>, V ex
 
   constructor(
     readonly name: string,
-    private finalize: (id: ID, entity: Entity<K, T, V>) => void,
+    private finalize: (id: ID, entity: Entity<K, T, V, impl>) => void,
     readonly promiseCtr: PromiseCtr,
   ) { }
 
@@ -151,7 +151,7 @@ export class ChildStore<ID, K extends string, T extends Rec<K>, V extends T, P e
 
   constructor(
     name: string,
-    finalize: (id: ID, entity: Entity<K, T, V>) => void,
+    finalize: (id: ID, entity: Entity<K, T, V, ChildEntityImpl<K, T, V, P, pimpl>>) => void,
     promiseCtr: PromiseCtr,
     readonly parent: PS,
   ) { super(name, finalize, promiseCtr) }
@@ -196,7 +196,7 @@ export class ChildStore<ID, K extends string, T extends Rec<K>, V extends T, P e
 export class TopStore<ID, K extends string, T extends Rec<K>, V extends T = T> extends AbstractStore<ID, K, T, V, EntityImpl<K, T, V>> {
   constructor(
     name: string,
-    finalize: (id: ID, entity: Entity<K, T, V>) => void,
+    finalize: (id: ID, entity: Entity<K, T, V, EntityImpl<K, T, V>>) => void,
     promiseCtr: PromiseCtr,
   ) { super(name, finalize, promiseCtr) }
 

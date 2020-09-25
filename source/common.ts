@@ -2,7 +2,7 @@ export type Rec<K extends keyof any> = Partial<Record<K, any>>;
 export type TRec<K extends keyof any, KK extends Record<K, keyof any>> = { [k in K]: Record<KK[k], any> };
 
 export type PromiseCtr = {
-  new <T>(executor: (resolve: (value?: T | PromiseLike<T>) => void, reject: (reason?: any) => void) => void): PromiseLike<T>;
+  new <T>(executor: (resolve: (value?: T | PromiseLike<T>) => void, reject: (reason?: any) => void, onCancel?: (callback: () => void) => void) => void): PromiseLike<T>;
   all<T>(values: readonly (T | PromiseLike<T>)[]): PromiseLike<T[]>,
   resolve<T>(value: T | PromiseLike<T>): PromiseLike<T>;
   reject<T = never>(reason?: any): PromiseLike<T>;
