@@ -1,8 +1,9 @@
 import { BehaviorSubject, identity } from "rxjs";
 import { EntityFieldsFct, EntityFieldsMap, EntityAbstract } from "./entity-abstract";
-import { altern, ValuedSubject, map, of } from "../valued-observable";
+import { ValuedSubject, map, of, ValuedObservable } from "rxvalue";
 import { Entity, $rx, $rxMap, $levelOf } from "./entity-proxies";
 import { guard, Rec } from "../common";
+import { alternMap } from "altern-map";
 
 /** 
  * Child entity class
@@ -17,7 +18,8 @@ export class ChildEntityImpl<K extends string, T extends Rec<K>, V extends T, P 
   };
   private createRx<k extends K>(k: k): ValuedSubject<T[k], V[k]> {
     const rxSource: ValuedSubject<ValuedSubject<T[k], V[k]>> = this.rxSource(k);
-    return Object.assign(altern(rxSource, identity), {
+    const zz = alternMap<ValuedObservable<T[k]>, T[k]>(identity, {}, true);
+    return Object.assign(rxSource.pipe(zz), {
       next: (x: V[k]) => this._parent && rxSource.value === $rx(this._parent, k)
         ? rxSource.next(new BehaviorSubject<T[k]>(x))
         : rxSource.value.next(x)
@@ -66,7 +68,7 @@ export class ChildEntityImpl<K extends string, T extends Rec<K>, V extends T, P 
       this._parent = parent;
       keys = Object.keys($rxMap(parent)) as K[];
       keys.forEach(<k extends K>(k: k) => {
-        const next: ValuedSubject<T[k], V[k]> =  k in data
+        const next: ValuedSubject<T[k], V[k]> = k in data
           ? new BehaviorSubject(data[k] as V[k])
           : $rx(parent, k);
         rxSourceMap[k] = new BehaviorSubject(next);
@@ -110,7 +112,8 @@ export class ChildEntityImpl<K extends string, T extends Rec<K>, V extends T, P 
     );
   };
 
-  readonly levelOf = <SK extends K>(field: SK) => altern(this.rxSource(field),
-    (src: unknown) => src === this._parent?.[field] ? map($levelOf(this._parent!, field), l => l + 1) : of(0)
-  );
+  readonly levelOf = <SK extends K>(field: SK) => this.rxSource(field).pipe(alternMap(
+    (src: unknown) => src === this._parent?.[field] ? $levelOf(this._parent!, field).pipe(map(l => l + 1, 0, true)) : of(0),
+    {}, true
+  ));
 }

@@ -1,5 +1,5 @@
 import { Rec } from '..';
-import { ValuedSubject, of } from '../valued-observable';
+import { ValuedSubject, of } from 'rxvalue';
 
 
 /** 

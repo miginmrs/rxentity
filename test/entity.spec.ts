@@ -1,7 +1,6 @@
 import { expect } from 'chai';
-import { combineLatest } from 'rxjs';
 import { ChildEntityImpl, EntityImpl, toEntity, Entity, $snapshot, $levelOf, $local, $rxMap, $rewind, getEntity } from '../source/entity';
-import { combine } from '../source/valued-observable';
+import { combine } from 'rxvalue';
 
 describe('Entity', () => {
   type User = { name: string, login: string, extra?: string };

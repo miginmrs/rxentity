@@ -273,8 +273,8 @@ ajv@^6.1.0, ajv@^6.10.2:
     uri-js "^4.2.2"
 
 altern-map@miginmrs/altern-map#builds:
-  version "0.0.1"
-  resolved "https://codeload.github.com/miginmrs/altern-map/tar.gz/42c1936aa895fd8767b549c7238a44b9f91c19bf"
+  version "0.0.2"
+  resolved "https://codeload.github.com/miginmrs/altern-map/tar.gz/4c68819e4fa59a7d41ed566738277545f2d941bf"
 
 ansi-colors@4.1.1:
   version "4.1.1"
@@ -3011,6 +3011,10 @@ rxjs@>=6.0.0:
   dependencies:
     tslib "^1.9.0"
 
+rxvalue@miginmrs/rxvalue#builds:
+  version "1.0.0"
+  resolved "https://codeload.github.com/miginmrs/rxvalue/tar.gz/f938ee6ecba2871795eaa76977b9d030bee34cde"
+
 safe-buffer@^5.0.1, safe-buffer@^5.1.0, safe-buffer@^5.1.1, safe-buffer@^5.1.2, safe-buffer@^5.2.0, safe-buffer@~5.2.0:
   version "5.2.1"
   resolved "https://registry.yarnpkg.com/safe-buffer/-/safe-buffer-5.2.1.tgz#1eaf9fa9bdb1fdd4ec75f58f9cdb4e6b7827eec6"
@@ -3502,10 +3506,10 @@ typedarray@^0.0.6:
   resolved "https://registry.yarnpkg.com/typedarray/-/typedarray-0.0.6.tgz#867ac74e3864187b1d3d47d996a78ec5c8830777"
   integrity sha1-hnrHTjhkGHsdPUfZlqeOxciDB3c=
 
-typescript@^3.9.7:
-  version "3.9.7"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-3.9.7.tgz#98d600a5ebdc38f40cb277522f12dc800e9e25fa"
-  integrity sha512-BLbiRkiBzAwsjut4x/dsibSTB6yWpwT5qWmC2OfuCg3GgVQCSgMs4vEctYPhsaGtd0AeuuHMkjZ2h2WG8MSzRw==
+typescript@^4.0.3:
+  version "4.0.3"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.0.3.tgz#153bbd468ef07725c1df9c77e8b453f8d36abba5"
+  integrity sha512-tEu6DGxGgRJPb/mVPIZ48e69xCn2yRmCgYmDugAVwmJ6o+0u1RI18eO7E7WBTLYLaEVVOhwQmcdhQHweux/WPg==
 
 union-value@^1.0.0:
   version "1.0.1"
