@@ -139,7 +139,7 @@ class ChildStore extends AbstractStore {
     setItemEntity(id, data, item) {
         const parentFlow = this.parent.get(id);
         item.entity = entity_1.toEntity(new entity_1.ChildEntityImpl({
-            data, ready: false,
+            store: this, data, ready: false,
             parentPromise: {
                 then: (setParent) => {
                     const subscription = parentFlow.observable.subscribe(parent => setParent(parent));
@@ -164,7 +164,7 @@ class ChildStore extends AbstractStore {
             let run = !skipCurrent;
             // this._entities.set will not be runned when .next is invoked because it will be already unsubscribed
             item.parentSubscription = this.parent.get(id).observable.subscribe(parent => {
-                item.entity = entity_1.toEntity(new entity_1.ChildEntityImpl({ data: {}, parent, ready: true }));
+                item.entity = entity_1.toEntity(new entity_1.ChildEntityImpl({ data: {}, parent, ready: true, store: this }));
                 this.emptyInsersions.next(item.id);
                 if (run)
                     observers.forEach(subscriber => subscriber.next(item.entity));
@@ -177,7 +177,7 @@ exports.ChildStore = ChildStore;
 class TopStore extends AbstractStore {
     constructor(name, finalize, promiseCtr) { super(name, finalize, promiseCtr); }
     setItemEntity(_id, data, item) {
-        item.entity = entity_1.toEntity(new entity_1.EntityImpl(data));
+        item.entity = entity_1.toEntity(new entity_1.EntityImpl(data, this));
     }
     linkParentNewId() { }
     subscribeToParent() { }

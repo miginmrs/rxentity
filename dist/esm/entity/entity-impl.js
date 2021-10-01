@@ -6,11 +6,12 @@ import { EntityAbstract } from "./entity-abstract";
  * @template V map of fields input types
  */
 export class EntityImpl extends EntityAbstract {
-    constructor(e) {
+    constructor(e, store) {
         super();
         this.rx = (k) => {
             return this.rxMap[k] || (this.rxMap[k] = new BehaviorSubject(undefined));
         };
+        this.store = store;
         const rxMap = this.rxMap = {};
         Object.keys(e).forEach(k => {
             rxMap[k] = new BehaviorSubject(e[k]);

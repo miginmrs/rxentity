@@ -1,9 +1,9 @@
 export const runit = (gen, promiseCtr) => {
     const runThen = (...args) => {
-        const v = args.length ? gen.next(args[0]) : gen.next();
+        const v = args.length == 1 ? gen.next(args[0]) : args.length ? gen.throw(args[1]) : gen.next();
         if (v.done)
             return promiseCtr.resolve(v.value);
-        return promiseCtr.resolve(v.value).then(runThen);
+        return promiseCtr.resolve(v.value).then(runThen, err => runThen(null, err));
     };
     return runThen();
 };

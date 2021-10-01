@@ -9,11 +9,12 @@ const entity_abstract_1 = require("./entity-abstract");
  * @template V map of fields input types
  */
 class EntityImpl extends entity_abstract_1.EntityAbstract {
-    constructor(e) {
+    constructor(e, store) {
         super();
         this.rx = (k) => {
             return this.rxMap[k] || (this.rxMap[k] = new rxjs_1.BehaviorSubject(undefined));
         };
+        this.store = store;
         const rxMap = this.rxMap = {};
         Object.keys(e).forEach(k => {
             rxMap[k] = new rxjs_1.BehaviorSubject(e[k]);

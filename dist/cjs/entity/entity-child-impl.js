@@ -57,6 +57,7 @@ class ChildEntityImpl extends entity_abstract_1.EntityAbstract {
         const rxMap = this.rxMap = {};
         const rxSourceMap = this.rxSourceMap = {};
         let keys;
+        this.store = params.store;
         if (params.ready) {
             const { data, parent } = params;
             this._parent = parent;

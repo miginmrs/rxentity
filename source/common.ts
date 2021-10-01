@@ -9,10 +9,10 @@ export type PromiseCtr = {
 }
 
 export const runit = <R, N>(gen: Generator<N | PromiseLike<N>, R, N>, promiseCtr: PromiseCtr) => {
-  const runThen = (...args: [] | [N]): PromiseLike<R> => {
-    const v = args.length ? gen.next(args[0]) : gen.next();
+  const runThen = (...args: [] | [N] | [null, any]): PromiseLike<R> => {
+    const v = args.length == 1 ? gen.next(args[0]) : args.length ? gen.throw(args[1]) : gen.next();
     if (v.done) return promiseCtr.resolve(v.value);
-    return promiseCtr.resolve(v.value).then(runThen);
+    return promiseCtr.resolve(v.value).then(runThen, err => runThen(null, err));
   }; return runThen();
 }
 

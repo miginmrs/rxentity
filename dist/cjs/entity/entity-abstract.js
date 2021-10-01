@@ -6,6 +6,7 @@ const rxvalue_1 = require("rxvalue");
  * Entity base class
  * @template T map of fields output types
  * @template V map of fields input types
+ * @template S store type
  */
 class EntityAbstract {
     constructor() {

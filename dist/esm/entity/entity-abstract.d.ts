@@ -4,14 +4,17 @@ import { ValuedSubject } from 'rxvalue';
  * Entity base class
  * @template T map of fields output types
  * @template V map of fields input types
+ * @template S store type
  */
-export declare abstract class EntityAbstract<K extends string, T extends Rec<K>, V extends T> {
+export declare abstract class EntityAbstract<K extends string, T extends Rec<K>, V extends T, S> {
     /** `function` that returns the `ValuedSubject` for the givin `field` */
     abstract readonly rx: EntityFieldsFct<K, T, V>;
     /** `map` that stores the `ValuedSubject` for all the entity `fields` */
     abstract readonly rxMap: Readonly<EntityFieldsMap<K, T, V>>;
     /** a `getter` snapshot for the *local* `fields` */
     abstract readonly local: Partial<Pick<T, K>>;
+    /** `function` that returns the `ValuedSubject` for the givin `field` */
+    abstract readonly store: S;
     /** a `getter` snapshot for all the entity `fields` */
     get snapshot(): Pick<T, K>;
     /** updates some fields of the entity */

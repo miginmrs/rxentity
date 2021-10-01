@@ -3,6 +3,7 @@ import { of } from 'rxvalue';
  * Entity base class
  * @template T map of fields output types
  * @template V map of fields input types
+ * @template S store type
  */
 export class EntityAbstract {
     constructor() {

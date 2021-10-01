@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ChildStoredList = exports.TopStoredList = exports.AbstractStoredList = void 0;
 const rxjs_1 = require("rxjs");
 const operators_1 = require("rxjs/operators");
+const entity_1 = require("../entity");
 const common_1 = require("../common");
 class AbstractStoredList {
     /**
@@ -87,9 +88,10 @@ class AbstractStoredList {
     remove(entity) {
         if (this.list === null)
             return;
-        const index = this.list.data.findIndex(e => e.entity === entity);
+        const index = this.list.data.findIndex(e => e.entity[this.key] === entity);
         if (index !== -1) {
             const list = this.list;
+            this.removeFromParent(entity);
             list.data[index].subscription.unsubscribe();
             list.data.splice(index, 1);
             this.subscriber?.next({ list: list.data.map(e => e.entity), status: list.status });
@@ -140,6 +142,7 @@ exports.AbstractStoredList = AbstractStoredList;
 class TopStoredList extends AbstractStoredList {
     *handleError(_n, e) { throw e; }
     *fromParent(_n, process) { return process(); }
+    removeFromParent() { }
 }
 exports.TopStoredList = TopStoredList;
 class ChildStoredList extends AbstractStoredList {
@@ -187,6 +190,14 @@ class ChildStoredList extends AbstractStoredList {
         catch (e) {
             // unsubscribed while retrieving data from parent
             return true;
+        }
+    }
+    removeFromParent(entity) {
+        const entityImpl = entity_1.getEntity(entity);
+        if (entityImpl instanceof entity_1.ChildEntityImpl) {
+            const childEntityImpl = entityImpl;
+            if (childEntityImpl.parent)
+                this.parent.remove(childEntityImpl.parent);
         }
     }
 }
