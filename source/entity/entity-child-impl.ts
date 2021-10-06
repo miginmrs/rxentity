@@ -12,7 +12,7 @@ import { alternMap } from "altern-map";
  * @template V map of fields input types
  * @template I union of initial field keys
  */
-export class ChildEntityImpl<K extends string, T extends Rec<K>, V extends T, P extends T, pimpl extends EntityAbstract<K, P, any> = EntityAbstract<K, P, any>> extends EntityAbstract<K, T, V> {
+export class ChildEntityImpl<K extends string, T extends Rec<K>, V extends T, P extends T, S, pimpl extends EntityAbstract<K, P, any, any> = EntityAbstract<K, P, any, S>> extends EntityAbstract<K, T, V, S> {
   readonly rx: EntityFieldsFct<K, T, V> = <k extends K>(k: k) => {
     return this.rxMap[k] || (this.rxMap[k] = this.createRx(k));
   };
@@ -35,7 +35,7 @@ export class ChildEntityImpl<K extends string, T extends Rec<K>, V extends T, P 
     );
   };
   private rxSourceMap: { [k in keyof T]: BehaviorSubject<ValuedSubject<T[k], V[k]>> };
-  private _parent: Entity<K, P, any, pimpl> | undefined = undefined;
+  private _parent: Entity<K, P, any, any, pimpl> | undefined = undefined;
   get parent() { return this._parent; };
 
   get local() {
@@ -50,19 +50,24 @@ export class ChildEntityImpl<K extends string, T extends Rec<K>, V extends T, P 
     return snapshot;
   }
 
+  public readonly store: S;
+
   constructor(params: {
     data: V;
-    parentPromise: { then: (setParent: (parent: Entity<K, P, any, pimpl>) => void) => void; };
+    parentPromise: { then: (setParent: (parent: Entity<K, P, any, any, pimpl>) => void) => void; };
     ready: false;
+    store: S;
   } | {
     data: { [k in K]?: V[k] };
-    parent: Entity<K, P, any, pimpl>;
+    parent: Entity<K, P, any, any, pimpl>;
     ready: true;
+    store: S;
   }) {
     super();
     const rxMap = this.rxMap = {} as EntityFieldsMap<K, T, V>;
     const rxSourceMap = this.rxSourceMap = {} as { [k in keyof T]: BehaviorSubject<ValuedSubject<T[k], V[k]>> };
     let keys: K[];
+    this.store = params.store;
     if (params.ready) {
       const { data, parent } = params;
       this._parent = parent;
@@ -84,7 +89,7 @@ export class ChildEntityImpl<K extends string, T extends Rec<K>, V extends T, P 
     keys.forEach(<k extends K>(k: k) => rxMap[k] = this.createRx(k));
   }
 
-  setParent = (parent?: Entity<K, P, any, pimpl>) => {
+  setParent = (parent?: Entity<K, P, any, any, pimpl>) => {
     const oldParent = this.parent;
     this._parent = parent;
     const rxSourceMap = this.rxSourceMap;
@@ -112,7 +117,7 @@ export class ChildEntityImpl<K extends string, T extends Rec<K>, V extends T, P 
     );
   };
 
-  readonly levelOf = <SK extends K>(field: SK) => this.rxSource(field).pipe(alternMap(
+  readonly levelOf = <SK extends K>(field: SK): ValuedObservable<number>  => this.rxSource(field).pipe(alternMap(
     (src: unknown) => src === this._parent?.[field] ? $levelOf(this._parent!, field).pipe(map(l => l + 1, 0, true)) : of(0),
     {}, true
   ));
