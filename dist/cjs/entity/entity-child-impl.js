@@ -15,7 +15,7 @@ const altern_map_1 = require("altern-map");
  */
 class ChildEntityImpl extends entity_abstract_1.EntityAbstract {
     constructor(params) {
-        super();
+        super(params.store);
         this.rx = (k) => {
             return this.rxMap[k] || (this.rxMap[k] = this.createRx(k));
         };
@@ -51,13 +51,15 @@ class ChildEntityImpl extends entity_abstract_1.EntityAbstract {
             const parent = this._parent;
             if (!parent)
                 return;
-            (field ? [field] : Object.keys(this.rxSourceMap)).forEach(field => this.rxSource(field).next(entity_proxies_1.$rx(parent, field)));
+            (field ? [field] : Object.keys(this.rxSourceMap)).forEach(field => {
+                this.rx(field).unlink();
+                this.rxSource(field).next(entity_proxies_1.$rx(parent, field));
+            });
         };
         this.levelOf = (field) => this.rxSource(field).pipe(altern_map_1.alternMap((src) => src === this._parent?.[field] ? entity_proxies_1.$levelOf(this._parent, field).pipe(rxvalue_1.map(l => l + 1, 0, true)) : rxvalue_1.of(0), {}, true));
         const rxMap = this.rxMap = {};
         const rxSourceMap = this.rxSourceMap = {};
         let keys;
-        this.store = params.store;
         if (params.ready) {
             const { data, parent } = params;
             this._parent = parent;
@@ -81,12 +83,17 @@ class ChildEntityImpl extends entity_abstract_1.EntityAbstract {
     }
     createRx(k) {
         const rxSource = this.rxSource(k);
-        const zz = altern_map_1.alternMap(rxjs_1.identity, {}, true);
-        return Object.assign(rxSource.pipe(zz), {
-            next: (x) => this._parent && rxSource.value === entity_proxies_1.$rx(this._parent, k)
-                ? rxSource.next(new rxjs_1.BehaviorSubject(x))
-                : rxSource.value.next(x)
-        });
+        const clone = altern_map_1.alternMap(rxjs_1.identity, {}, true);
+        let subs;
+        const unlink = () => subs?.unsubscribe();
+        const link = (v) => {
+            unlink();
+            subs = v.subscribe(x => next(x));
+        };
+        const next = (x) => this._parent && rxSource.value === entity_proxies_1.$rx(this._parent, k)
+            ? rxSource.next(new rxjs_1.BehaviorSubject(x))
+            : (unlink(), rxSource.value.next(x));
+        return Object.assign(rxSource.pipe(clone), { next, link, unlink });
     }
     get parent() { return this._parent; }
     ;

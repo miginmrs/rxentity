@@ -1,6 +1,5 @@
 import { Observable } from "rxjs";
-import { EntityAbstract } from "./entity-abstract";
-import { ValuedSubject } from "rxvalue";
+import { EntityAbstract, LinkedValuedSubject } from "./entity-abstract";
 import { Rec } from "../common";
 declare const $entity: unique symbol;
 /**
@@ -11,7 +10,7 @@ declare const $entity: unique symbol;
 export declare type Entity<K extends string, T extends Rec<K>, V extends T, S, E extends EntityAbstract<K, T, V, S> = EntityAbstract<K, T, V, S>> = {
     readonly [$entity]: E;
 } & {
-    readonly [k in K]: ValuedSubject<T[k], V[k]>;
+    readonly [k in K]: LinkedValuedSubject<T[k], V[k]>;
 };
 export declare function getEntity<K extends string, T extends Rec<K>, V extends T, S, E extends EntityAbstract<K, T, V, S>>(e: Entity<K, T, V, S, E>): E;
 export declare function getEntity<K extends string, T extends Rec<K>, V extends T, S, E extends EntityAbstract<K, T, V, S>>(e: Entity<K, T, V, S, E> | undefined): E | undefined;
@@ -40,7 +39,7 @@ export declare const entityFlow: <K extends string, T extends Partial<Record<K, 
  * @see {Entity}
  */
 export declare const toEntity: <K extends string, T extends Partial<Record<K, any>>, V extends T, S, E extends EntityAbstract<K, T, V, S>>(entity: EntityAbstract<K, T, V, S> & E) => Entity<K, T, V, S, E>;
-export declare const $rx: <K extends string, T extends Partial<Record<K, any>>, V extends T, k extends K>(entity: Entity<K, T, V, any, EntityAbstract<K, T, V, any>>, k: k) => ValuedSubject<T[k], V[k]>;
+export declare const $rx: <K extends string, T extends Partial<Record<K, any>>, V extends T, k extends K>(entity: Entity<K, T, V, any, EntityAbstract<K, T, V, any>>, k: k) => LinkedValuedSubject<T[k], V[k]>;
 export declare const $rxMap: <K extends string, T extends Partial<Record<K, any>>, V extends T>(entity: Entity<K, T, V, any, EntityAbstract<K, T, V, any>>) => Readonly<import("./entity-abstract").EntityFieldsMap<K, T, V>>;
 export declare const $levelOf: <K extends string, T extends Partial<Record<K, any>>, V extends T, k extends K>(entity: Entity<K, T, V, any, EntityAbstract<K, T, V, any>>, k: k) => Observable<number> & {
     value: number;

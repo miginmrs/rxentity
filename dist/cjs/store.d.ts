@@ -30,7 +30,7 @@ export declare abstract class AbstractStore<ID, K extends string, T extends Rec<
      */
     prepare(id: ID, handler: (id: ID, item: {
         readonly ready?: true;
-    }, join: (subsciption: Subscription) => void) => void | PromiseLike<void>): Observable<Entity<K, T, V, S, impl>>;
+    }, join: (subscription: Subscription) => void) => void | PromiseLike<void>): Observable<Entity<K, T, V, S, impl>>;
     nextBulk(items: {
         id: ID;
         data: V;

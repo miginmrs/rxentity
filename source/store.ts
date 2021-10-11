@@ -35,12 +35,12 @@ export abstract class AbstractStore<ID, K extends string, T extends Rec<K>, V ex
     id: ID,
     handler: (
       id: ID, item: { readonly ready?: true; },
-      join: (subsciption: Subscription) => void
+      join: (subscription: Subscription) => void
     ) => void | PromiseLike<void>
   ): Observable<Entity<K, T, V, S, impl>> {
     const entityFlow = this.get(id);
     return new Observable<Entity<K, T, V, S, impl>>(subscriber => {
-      const subsciption = entityFlow.observable.subscribe(subscriber);
+      const subscription = entityFlow.observable.subscribe(subscriber);
       const item = this._items.get(id);
       if (!item) return; // assert item is not null (unless id has changed)
       // if the item exists but not because of `prepare` call, execute the handler anyway
@@ -51,11 +51,11 @@ export abstract class AbstractStore<ID, K extends string, T extends Rec<K>, V ex
       }).then(undefined, () => {
         const i = item;
         if (!item.closed && !item.ready) {
-          return handler(item.id, { get ready() { return i.ready } }, subs => subsciption.add(subs));
+          return handler(item.id, { get ready() { return i.ready } }, subs => subscription.add(subs));
         }
       });
       next.then(undefined, () => { });
-      return subsciption;
+      return subscription;
     });
   }
 
@@ -136,6 +136,9 @@ export abstract class AbstractStore<ID, K extends string, T extends Rec<K>, V ex
             if (subscription) {
               subscription.unsubscribe();
             }
+            if (item.entity) {
+              getEntity(item.entity).unlinkAll()
+            }
           }
         };
       }));
@@ -198,7 +201,7 @@ export class TopStore<ID, K extends string, T extends Rec<K>, V extends T = T> e
 
   setItemEntity(_id: ID, data: V, item: Item<ID, K, T, V, TopStore<ID, K, T, V>, EntityImpl<K, T, V, TopStore<ID, K, T, V>>>) {
     item.entity = toEntity<K, T, V, TopStore<ID, K, T, V>, EntityImpl<K, T, V, TopStore<ID, K, T, V>>>(
-      new EntityImpl<K, T, V, TopStore<ID, K, T, V>>(data, this)) as Entity<K, T, V, TopStore<ID, K, T, V>, EntityImpl<K, T, V, TopStore<ID, K, T, V>>>;
+      new EntityImpl<K, T, V, TopStore<ID, K, T, V>>(data, this));
   }
 
   linkParentNewId() { }

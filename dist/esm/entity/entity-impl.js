@@ -1,5 +1,4 @@
-import { BehaviorSubject } from "rxjs";
-import { EntityAbstract } from "./entity-abstract";
+import { LinkedBehaviorSubject, EntityAbstract } from "./entity-abstract";
 /**
  * Top level entity class
  * @template T map of fields output types
@@ -7,14 +6,13 @@ import { EntityAbstract } from "./entity-abstract";
  */
 export class EntityImpl extends EntityAbstract {
     constructor(e, store) {
-        super();
+        super(store);
         this.rx = (k) => {
-            return this.rxMap[k] || (this.rxMap[k] = new BehaviorSubject(undefined));
+            return this.rxMap[k] || (this.rxMap[k] = new LinkedBehaviorSubject(undefined));
         };
-        this.store = store;
         const rxMap = this.rxMap = {};
         Object.keys(e).forEach(k => {
-            rxMap[k] = new BehaviorSubject(e[k]);
+            rxMap[k] = new LinkedBehaviorSubject(e[k]);
         });
     }
     get local() { return this.snapshot; }

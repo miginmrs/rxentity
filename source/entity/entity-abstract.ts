@@ -1,5 +1,6 @@
 import { Rec } from '..';
 import { ValuedSubject, of } from 'rxvalue';
+import { BehaviorSubject, Observable, Subscription } from 'rxjs';
 
 
 /** 
@@ -16,7 +17,12 @@ export abstract class EntityAbstract<K extends string, T extends Rec<K>, V exten
   /** a `getter` snapshot for the *local* `fields` */
   abstract readonly local: Partial<Pick<T, K>>;
   /** `function` that returns the `ValuedSubject` for the givin `field` */
-  abstract readonly store: S;
+
+  constructor(public readonly store: S) { }
+
+  readonly unlinkAll = () => {
+    (Object.keys(this.rxMap) as K[]).forEach(k => this.rxMap[k].unlink());
+  }
 
   /** a `getter` snapshot for all the entity `fields` */
   get snapshot() {
@@ -48,11 +54,29 @@ export abstract class EntityAbstract<K extends string, T extends Rec<K>, V exten
 
 /** `function` that associates to each key of an entity a `ValuedSubject` */
 export type EntityFieldsFct<K extends string, T extends Rec<K>, V extends T = T> = {
-  <k extends K>(k: k): ValuedSubject<T[k], V[k]>;
+  <k extends K>(k: k): LinkedValuedSubject<T[k], V[k]>;
 };
 
 /** `map` that associates to each key of an entity a `ValuedSubject` */
 export type EntityFieldsMap<K extends string, T extends Rec<K>, V extends T = T> = {
-  [k in K]: ValuedSubject<T[k], V[k]>
+  [k in K]: LinkedValuedSubject<T[k], V[k]>
+};
+export type LinkedValuedSubject<T, V extends T = T> = ValuedSubject<T, V> & {
+  link: (value: Observable<V>) => void;
+  unlink: () => void;
 };
 
+export class LinkedBehaviorSubject<T> extends BehaviorSubject<T> implements LinkedValuedSubject<T> {
+  protected _subs?: Subscription;
+  link(value: Observable<T>) {
+    this.unlink();
+    this._subs = value.subscribe(v => super.next(v));
+  }
+  unlink() {
+    this._subs?.unsubscribe();
+  }
+  next(v: T) {
+    this.unlink();
+    super.next(v);
+  }
+}

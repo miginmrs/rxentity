@@ -18,7 +18,6 @@ export declare class ChildEntityImpl<K extends string, T extends Rec<K>, V exten
     private _parent;
     get parent(): Entity<K, P, any, any, pimpl> | undefined;
     get local(): Partial<Pick<T, K>>;
-    readonly store: S;
     constructor(params: {
         data: V;
         parentPromise: {

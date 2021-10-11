@@ -25,7 +25,7 @@ class AbstractStore {
     prepare(id, handler) {
         const entityFlow = this.get(id);
         return new rxjs_1.Observable(subscriber => {
-            const subsciption = entityFlow.observable.subscribe(subscriber);
+            const subscription = entityFlow.observable.subscribe(subscriber);
             const item = this._items.get(id);
             if (!item)
                 return; // assert item is not null (unless id has changed)
@@ -42,11 +42,11 @@ class AbstractStore {
             }).then(undefined, () => {
                 const i = item;
                 if (!item.closed && !item.ready) {
-                    return handler(item.id, { get ready() { return i.ready; } }, subs => subsciption.add(subs));
+                    return handler(item.id, { get ready() { return i.ready; } }, subs => subscription.add(subs));
                 }
             });
             next.then(undefined, () => { });
-            return subsciption;
+            return subscription;
         });
     }
     nextBulk(items) {
@@ -124,6 +124,9 @@ class AbstractStore {
                     }
                     if (subscription) {
                         subscription.unsubscribe();
+                    }
+                    if (item.entity) {
+                        entity_1.getEntity(item.entity).unlinkAll();
                     }
                 }
             };

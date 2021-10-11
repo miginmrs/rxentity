@@ -1,7 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.EntityAbstract = void 0;
+exports.LinkedBehaviorSubject = exports.EntityAbstract = void 0;
 const rxvalue_1 = require("rxvalue");
+const rxjs_1 = require("rxjs");
 /**
  * Entity base class
  * @template T map of fields output types
@@ -9,7 +10,12 @@ const rxvalue_1 = require("rxvalue");
  * @template S store type
  */
 class EntityAbstract {
-    constructor() {
+    /** `function` that returns the `ValuedSubject` for the givin `field` */
+    constructor(store) {
+        this.store = store;
+        this.unlinkAll = () => {
+            Object.keys(this.rxMap).forEach(k => this.rxMap[k].unlink());
+        };
         /** updates some fields of the entity */
         this.update = (e) => {
             const rx = this.rx;
@@ -35,4 +41,18 @@ class EntityAbstract {
     }
 }
 exports.EntityAbstract = EntityAbstract;
+class LinkedBehaviorSubject extends rxjs_1.BehaviorSubject {
+    link(value) {
+        this.unlink();
+        this._subs = value.subscribe(v => super.next(v));
+    }
+    unlink() {
+        this._subs?.unsubscribe();
+    }
+    next(v) {
+        this.unlink();
+        super.next(v);
+    }
+}
+exports.LinkedBehaviorSubject = LinkedBehaviorSubject;
 //# sourceMappingURL=entity-abstract.js.map

@@ -9,6 +9,5 @@ export declare class EntityImpl<K extends string, T extends Rec<K>, V extends T,
     readonly rx: EntityFieldsFct<K, T, V>;
     readonly rxMap: EntityFieldsMap<K, T, V>;
     get local(): Pick<T, K>;
-    readonly store: S;
     constructor(e: V, store: S);
 }

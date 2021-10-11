@@ -1535,8 +1535,9 @@ exports.Keys = Keys;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.EntityAbstract = void 0;
+exports.LinkedBehaviorSubject = exports.EntityAbstract = void 0;
 const rxvalue_1 = __webpack_require__(/*! rxvalue */ "./node_modules/rxvalue/dist/esm/index.js");
+const rxjs_1 = __webpack_require__(/*! rxjs */ "rxjs");
 /**
  * Entity base class
  * @template T map of fields output types
@@ -1544,7 +1545,12 @@ const rxvalue_1 = __webpack_require__(/*! rxvalue */ "./node_modules/rxvalue/dis
  * @template S store type
  */
 class EntityAbstract {
-    constructor() {
+    /** `function` that returns the `ValuedSubject` for the givin `field` */
+    constructor(store) {
+        this.store = store;
+        this.unlinkAll = () => {
+            Object.keys(this.rxMap).forEach(k => this.rxMap[k].unlink());
+        };
         /** updates some fields of the entity */
         this.update = (e) => {
             const rx = this.rx;
@@ -1570,6 +1576,21 @@ class EntityAbstract {
     }
 }
 exports.EntityAbstract = EntityAbstract;
+class LinkedBehaviorSubject extends rxjs_1.BehaviorSubject {
+    link(value) {
+        this.unlink();
+        this._subs = value.subscribe(v => super.next(v));
+    }
+    unlink() {
+        var _a;
+        (_a = this._subs) === null || _a === void 0 ? void 0 : _a.unsubscribe();
+    }
+    next(v) {
+        this.unlink();
+        super.next(v);
+    }
+}
+exports.LinkedBehaviorSubject = LinkedBehaviorSubject;
 
 
 /***/ }),
@@ -1599,7 +1620,7 @@ const altern_map_1 = __webpack_require__(/*! altern-map */ "./node_modules/alter
  */
 class ChildEntityImpl extends entity_abstract_1.EntityAbstract {
     constructor(params) {
-        super();
+        super(params.store);
         this.rx = (k) => {
             return this.rxMap[k] || (this.rxMap[k] = this.createRx(k));
         };
@@ -1636,13 +1657,15 @@ class ChildEntityImpl extends entity_abstract_1.EntityAbstract {
             const parent = this._parent;
             if (!parent)
                 return;
-            (field ? [field] : Object.keys(this.rxSourceMap)).forEach(field => this.rxSource(field).next(entity_proxies_1.$rx(parent, field)));
+            (field ? [field] : Object.keys(this.rxSourceMap)).forEach(field => {
+                this.rx(field).unlink();
+                this.rxSource(field).next(entity_proxies_1.$rx(parent, field));
+            });
         };
         this.levelOf = (field) => this.rxSource(field).pipe(altern_map_1.alternMap((src) => { var _a; return src === ((_a = this._parent) === null || _a === void 0 ? void 0 : _a[field]) ? entity_proxies_1.$levelOf(this._parent, field).pipe(rxvalue_1.map(l => l + 1, 0, true)) : rxvalue_1.of(0); }, {}, true));
         const rxMap = this.rxMap = {};
         const rxSourceMap = this.rxSourceMap = {};
         let keys;
-        this.store = params.store;
         if (params.ready) {
             const { data, parent } = params;
             this._parent = parent;
@@ -1666,12 +1689,17 @@ class ChildEntityImpl extends entity_abstract_1.EntityAbstract {
     }
     createRx(k) {
         const rxSource = this.rxSource(k);
-        const zz = altern_map_1.alternMap(rxjs_1.identity, {}, true);
-        return Object.assign(rxSource.pipe(zz), {
-            next: (x) => this._parent && rxSource.value === entity_proxies_1.$rx(this._parent, k)
-                ? rxSource.next(new rxjs_1.BehaviorSubject(x))
-                : rxSource.value.next(x)
-        });
+        const clone = altern_map_1.alternMap(rxjs_1.identity, {}, true);
+        let subs;
+        const unlink = () => subs === null || subs === void 0 ? void 0 : subs.unsubscribe();
+        const link = (v) => {
+            unlink();
+            subs = v.subscribe(x => next(x));
+        };
+        const next = (x) => this._parent && rxSource.value === entity_proxies_1.$rx(this._parent, k)
+            ? rxSource.next(new rxjs_1.BehaviorSubject(x))
+            : (unlink(), rxSource.value.next(x));
+        return Object.assign(rxSource.pipe(clone), { next, link, unlink });
     }
     get parent() { return this._parent; }
     ;
@@ -1705,7 +1733,6 @@ exports.ChildEntityImpl = ChildEntityImpl;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EntityImpl = void 0;
-const rxjs_1 = __webpack_require__(/*! rxjs */ "rxjs");
 const entity_abstract_1 = __webpack_require__(/*! ./entity-abstract */ "./source/entity/entity-abstract.ts");
 /**
  * Top level entity class
@@ -1714,14 +1741,13 @@ const entity_abstract_1 = __webpack_require__(/*! ./entity-abstract */ "./source
  */
 class EntityImpl extends entity_abstract_1.EntityAbstract {
     constructor(e, store) {
-        super();
+        super(store);
         this.rx = (k) => {
-            return this.rxMap[k] || (this.rxMap[k] = new rxjs_1.BehaviorSubject(undefined));
+            return this.rxMap[k] || (this.rxMap[k] = new entity_abstract_1.LinkedBehaviorSubject(undefined));
         };
-        this.store = store;
         const rxMap = this.rxMap = {};
         Object.keys(e).forEach(k => {
-            rxMap[k] = new rxjs_1.BehaviorSubject(e[k]);
+            rxMap[k] = new entity_abstract_1.LinkedBehaviorSubject(e[k]);
         });
     }
     get local() { return this.snapshot; }
@@ -2153,7 +2179,7 @@ class AbstractStore {
     prepare(id, handler) {
         const entityFlow = this.get(id);
         return new rxjs_1.Observable(subscriber => {
-            const subsciption = entityFlow.observable.subscribe(subscriber);
+            const subscription = entityFlow.observable.subscribe(subscriber);
             const item = this._items.get(id);
             if (!item)
                 return; // assert item is not null (unless id has changed)
@@ -2170,11 +2196,11 @@ class AbstractStore {
             }).then(undefined, () => {
                 const i = item;
                 if (!item.closed && !item.ready) {
-                    return handler(item.id, { get ready() { return i.ready; } }, subs => subsciption.add(subs));
+                    return handler(item.id, { get ready() { return i.ready; } }, subs => subscription.add(subs));
                 }
             });
             next.then(undefined, () => { });
-            return subsciption;
+            return subscription;
         });
     }
     nextBulk(items) {
@@ -2254,6 +2280,9 @@ class AbstractStore {
                     }
                     if (subscription) {
                         subscription.unsubscribe();
+                    }
+                    if (item.entity) {
+                        entity_1.getEntity(item.entity).unlinkAll();
                     }
                 }
             };

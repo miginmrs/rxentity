@@ -12,7 +12,7 @@ import { alternMap } from "altern-map";
  */
 export class ChildEntityImpl extends EntityAbstract {
     constructor(params) {
-        super();
+        super(params.store);
         this.rx = (k) => {
             return this.rxMap[k] || (this.rxMap[k] = this.createRx(k));
         };
@@ -48,13 +48,15 @@ export class ChildEntityImpl extends EntityAbstract {
             const parent = this._parent;
             if (!parent)
                 return;
-            (field ? [field] : Object.keys(this.rxSourceMap)).forEach(field => this.rxSource(field).next($rx(parent, field)));
+            (field ? [field] : Object.keys(this.rxSourceMap)).forEach(field => {
+                this.rx(field).unlink();
+                this.rxSource(field).next($rx(parent, field));
+            });
         };
         this.levelOf = (field) => this.rxSource(field).pipe(alternMap((src) => src === this._parent?.[field] ? $levelOf(this._parent, field).pipe(map(l => l + 1, 0, true)) : of(0), {}, true));
         const rxMap = this.rxMap = {};
         const rxSourceMap = this.rxSourceMap = {};
         let keys;
-        this.store = params.store;
         if (params.ready) {
             const { data, parent } = params;
             this._parent = parent;
@@ -78,12 +80,17 @@ export class ChildEntityImpl extends EntityAbstract {
     }
     createRx(k) {
         const rxSource = this.rxSource(k);
-        const zz = alternMap(identity, {}, true);
-        return Object.assign(rxSource.pipe(zz), {
-            next: (x) => this._parent && rxSource.value === $rx(this._parent, k)
-                ? rxSource.next(new BehaviorSubject(x))
-                : rxSource.value.next(x)
-        });
+        const clone = alternMap(identity, {}, true);
+        let subs;
+        const unlink = () => subs?.unsubscribe();
+        const link = (v) => {
+            unlink();
+            subs = v.subscribe(x => next(x));
+        };
+        const next = (x) => this._parent && rxSource.value === $rx(this._parent, k)
+            ? rxSource.next(new BehaviorSubject(x))
+            : (unlink(), rxSource.value.next(x));
+        return Object.assign(rxSource.pipe(clone), { next, link, unlink });
     }
     get parent() { return this._parent; }
     ;

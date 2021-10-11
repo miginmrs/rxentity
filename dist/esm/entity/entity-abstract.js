@@ -1,4 +1,5 @@
 import { of } from 'rxvalue';
+import { BehaviorSubject } from 'rxjs';
 /**
  * Entity base class
  * @template T map of fields output types
@@ -6,7 +7,12 @@ import { of } from 'rxvalue';
  * @template S store type
  */
 export class EntityAbstract {
-    constructor() {
+    /** `function` that returns the `ValuedSubject` for the givin `field` */
+    constructor(store) {
+        this.store = store;
+        this.unlinkAll = () => {
+            Object.keys(this.rxMap).forEach(k => this.rxMap[k].unlink());
+        };
         /** updates some fields of the entity */
         this.update = (e) => {
             const rx = this.rx;
@@ -29,6 +35,19 @@ export class EntityAbstract {
             snapshot[k] = rx(k).value;
         }
         return snapshot;
+    }
+}
+export class LinkedBehaviorSubject extends BehaviorSubject {
+    link(value) {
+        this.unlink();
+        this._subs = value.subscribe(v => super.next(v));
+    }
+    unlink() {
+        this._subs?.unsubscribe();
+    }
+    next(v) {
+        this.unlink();
+        super.next(v);
     }
 }
 //# sourceMappingURL=entity-abstract.js.map

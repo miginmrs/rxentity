@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EntityImpl = void 0;
-const rxjs_1 = require("rxjs");
 const entity_abstract_1 = require("./entity-abstract");
 /**
  * Top level entity class
@@ -10,14 +9,13 @@ const entity_abstract_1 = require("./entity-abstract");
  */
 class EntityImpl extends entity_abstract_1.EntityAbstract {
     constructor(e, store) {
-        super();
+        super(store);
         this.rx = (k) => {
-            return this.rxMap[k] || (this.rxMap[k] = new rxjs_1.BehaviorSubject(undefined));
+            return this.rxMap[k] || (this.rxMap[k] = new entity_abstract_1.LinkedBehaviorSubject(undefined));
         };
-        this.store = store;
         const rxMap = this.rxMap = {};
         Object.keys(e).forEach(k => {
-            rxMap[k] = new rxjs_1.BehaviorSubject(e[k]);
+            rxMap[k] = new entity_abstract_1.LinkedBehaviorSubject(e[k]);
         });
     }
     get local() { return this.snapshot; }
