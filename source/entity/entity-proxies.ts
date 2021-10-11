@@ -1,7 +1,6 @@
 import { alternMap } from "altern-map";
 import { Observable } from "rxjs";
-import { EntityAbstract } from "./entity-abstract";
-import { ValuedSubject } from "rxvalue";
+import { EntityAbstract, LinkedValuedSubject } from "./entity-abstract";
 import { Rec } from "../common";
 
 declare const $entity: unique symbol;
@@ -12,7 +11,7 @@ const entities = new WeakMap<Entity<any, any, any, any>, EntityAbstract<any, any
  * @template V map of fields input types
  */
 export type Entity<K extends string, T extends Rec<K>, V extends T, S, E extends EntityAbstract<K, T, V, S> = EntityAbstract<K, T, V, S>> = { readonly [$entity]: E, } & {
-  readonly [k in K]: ValuedSubject<T[k], V[k]>
+  readonly [k in K]: LinkedValuedSubject<T[k], V[k]>
 };
 
 export function getEntity<K extends string, T extends Rec<K>, V extends T, S, E extends EntityAbstract<K, T, V, S>>(e: Entity<K, T, V, S, E>): E;

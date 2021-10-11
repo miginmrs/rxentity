@@ -3,7 +3,7 @@
     "declaration": false,
     "importHelpers": false,
     "lib": [
-      "esnext"
+      "esnext", "dom"
     ],
     "module": "commonjs",
     "moduleResolution": "node",

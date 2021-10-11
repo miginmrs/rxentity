@@ -1,5 +1,5 @@
-import { BehaviorSubject, identity } from "rxjs";
-import { EntityFieldsFct, EntityFieldsMap, EntityAbstract } from "./entity-abstract";
+import { BehaviorSubject, identity, Observable, Subscription } from "rxjs";
+import { EntityFieldsFct, EntityFieldsMap, EntityAbstract, LinkedValuedSubject } from "./entity-abstract";
 import { ValuedSubject, map, of, ValuedObservable } from "rxvalue";
 import { Entity, $rx, $rxMap, $levelOf } from "./entity-proxies";
 import { guard, Rec } from "../common";
@@ -16,14 +16,19 @@ export class ChildEntityImpl<K extends string, T extends Rec<K>, V extends T, P 
   readonly rx: EntityFieldsFct<K, T, V> = <k extends K>(k: k) => {
     return this.rxMap[k] || (this.rxMap[k] = this.createRx(k));
   };
-  private createRx<k extends K>(k: k): ValuedSubject<T[k], V[k]> {
+  private createRx<k extends K>(k: k): LinkedValuedSubject<T[k], V[k]> {
     const rxSource: ValuedSubject<ValuedSubject<T[k], V[k]>> = this.rxSource(k);
-    const zz = alternMap<ValuedObservable<T[k]>, T[k]>(identity, {}, true);
-    return Object.assign(rxSource.pipe(zz), {
-      next: (x: V[k]) => this._parent && rxSource.value === $rx(this._parent, k)
-        ? rxSource.next(new BehaviorSubject<T[k]>(x))
-        : rxSource.value.next(x)
-    });
+    const clone = alternMap<ValuedObservable<T[k]>, T[k]>(identity, {}, true);
+    let subs: Subscription;
+    const unlink = () => subs?.unsubscribe();
+    const link = (v: Observable<V[k]>) => {
+      unlink();
+      subs = v.subscribe(x => next(x));
+    };
+    const next = (x: V[k]) => this._parent && rxSource.value === $rx(this._parent, k)
+      ? rxSource.next(new BehaviorSubject<T[k]>(x))
+      : (unlink(), rxSource.value.next(x));
+    return Object.assign(rxSource.pipe(clone), { next, link, unlink });
   }
   readonly rxMap: EntityFieldsMap<K, T, V>;
   private rxSource = <k extends K>(k: k) => {
@@ -50,8 +55,6 @@ export class ChildEntityImpl<K extends string, T extends Rec<K>, V extends T, P 
     return snapshot;
   }
 
-  public readonly store: S;
-
   constructor(params: {
     data: V;
     parentPromise: { then: (setParent: (parent: Entity<K, P, any, any, pimpl>) => void) => void; };
@@ -63,11 +66,10 @@ export class ChildEntityImpl<K extends string, T extends Rec<K>, V extends T, P 
     ready: true;
     store: S;
   }) {
-    super();
+    super(params.store);
     const rxMap = this.rxMap = {} as EntityFieldsMap<K, T, V>;
     const rxSourceMap = this.rxSourceMap = {} as { [k in keyof T]: BehaviorSubject<ValuedSubject<T[k], V[k]>> };
     let keys: K[];
-    this.store = params.store;
     if (params.ready) {
       const { data, parent } = params;
       this._parent = parent;
@@ -112,12 +114,13 @@ export class ChildEntityImpl<K extends string, T extends Rec<K>, V extends T, P 
   readonly rewind = <SK extends K>(field?: SK) => {
     const parent = this._parent;
     if (!parent) return;
-    (field ? [field] : Object.keys(this.rxSourceMap) as SK[]).forEach(
-      field => this.rxSource(field).next($rx(parent, field))
-    );
+    (field ? [field] : Object.keys(this.rxSourceMap) as SK[]).forEach(field => {
+      this.rx(field).unlink();
+      this.rxSource(field).next($rx(parent, field));
+    });
   };
 
-  readonly levelOf = <SK extends K>(field: SK): ValuedObservable<number>  => this.rxSource(field).pipe(alternMap(
+  readonly levelOf = <SK extends K>(field: SK): ValuedObservable<number> => this.rxSource(field).pipe(alternMap(
     (src: unknown) => src === this._parent?.[field] ? $levelOf(this._parent!, field).pipe(map(l => l + 1, 0, true)) : of(0),
     {}, true
   ));
