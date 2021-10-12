@@ -21,14 +21,10 @@ export class ChildEntityImpl<K extends string, T extends Rec<K>, V extends T, P 
     const clone = alternMap<ValuedObservable<T[k]>, T[k]>(identity, {}, true);
     let subs: Subscription;
     const unlink = () => subs?.unsubscribe();
-    const link = (v: Observable<V[k]>) => {
-      unlink();
-      subs = v.subscribe(x => next(x));
-    };
     const next = (x: V[k]) => this._parent && rxSource.value === $rx(this._parent, k)
       ? rxSource.next(new BehaviorSubject<T[k]>(x))
-      : (unlink(), rxSource.value.next(x));
-    return Object.assign(rxSource.pipe(clone), { next, link, unlink });
+      : (unlink(), (subs = x.subscribe(() => { })), rxSource.value.next(x));
+    return Object.assign(rxSource.pipe(clone), { next, unlink });
   }
   readonly rxMap: EntityFieldsMap<K, T, V>;
   private rxSource = <k extends K>(k: k) => {
