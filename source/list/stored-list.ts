@@ -1,9 +1,8 @@
-import { Subscription, Observable, Subscriber, ReplaySubject, from } from 'rxjs';
+import { Subscription, Observable, Subscriber } from 'rxjs';
 import { shareReplay } from 'rxjs/operators';
 import { ChildEntityImpl, Entity, EntityAbstract, EntityFlow, EntityImpl, getEntity } from '../entity';
 import { Entities, EntitiesFlow, ListStatus, EntityList, AbstractEntities, AbstractStores, EntitiesImpl, TopStores, ChildEntitiesImpl, ChildStores } from './types';
 import { asAsync, Keys, PromiseCtr, TRec, wait } from '../common'
-import { AbstractStore } from '../store';
 
 type EntityWithSubscrition<K extends string, KK extends Record<K, string>, T extends TRec<K, KK>, V extends T, S extends Record<K, unknown>, impl extends AbstractEntities<K, KK, T, V, S> = AbstractEntities<K, KK, T, V, S>> = { entity: Entities<K, KK, T, V, S, impl>, subscription: Subscription; };
 
@@ -88,7 +87,7 @@ export abstract class AbstractStoredList<K extends string, ID extends Pick<any, 
         const subscription = new Subscription();
         const entity = this.keys.asyncMapTo<{ [k in K]: Entity<KK[k], T[k], V[k], stores[k], impl[k] & EntityAbstract<KK[k], T[k], V[k], stores[k]>> }>(
           <k extends K>(k: k) => new this.promiseCtr<Entity<KK[k], T[k], V[k], stores[k], impl[k] & EntityAbstract<KK[k], T[k], V[k], stores[k]>>>(
-            res => entitiesFlow[k].observable.subscribe(res)
+            res => subscription.add(entitiesFlow[k].observable.subscribe(res))
           ), this.promiseCtr
         );
         return yield* wait(entity.then((entity) => ({ subscription, entity })));
@@ -150,13 +149,19 @@ export abstract class AbstractStoredList<K extends string, ID extends Pick<any, 
   private _exec = (n: number, err: any, from?: Entities<K, KK, T, V, stores, impl>, to?: Entities<K, KK, T, V, stores, impl>): PromiseLike<ListStatus> => asAsync(function* () {
     let done: PromiseLike<ListStatus>[] = [];
     try {
+      console.log(1, {n, err, from, to, this: this})
       if (!this._setDone(n, done, this.list)) return yield* wait(done[0]);
+      console.log(2, {n, err, from, to, this: this})
       const oldList = n ? this.list.data : [];
       [from, to] = [from || oldList[0]?.entity, to || oldList[oldList.length - 1]?.entity];
       const retrieved = yield* wait(this.retrieve(from, to, err));
+      console.log(3, {n, err, from, to, this:this, retrieved})
       if (!this._setDone(n, done, this.list)) return yield* wait(done[0]);
+      console.log(4, {n, err, from, to, this: this})
       const list = yield* wait(this._populate(retrieved.data));
+      console.log(5, {n, err, from, to, this: this})
       if (!this._setDone(n, done, this.list)) return yield* wait(done[0]);
+      console.log(6, {n, err, from, to, this: this})
       // if reload, unsubscribe from old entities
       if (!n) this.list.data.forEach(e => e.subscription.unsubscribe());
       this.list = { data: oldList.concat(list), status: retrieved.done };
@@ -165,12 +170,15 @@ export abstract class AbstractStoredList<K extends string, ID extends Pick<any, 
         this.subscriber!.next({ list: this.list.data.map(e => e.entity), status: this.list.status });
         return retrieved.done;
       }
+      console.log(7, {n, err, from, to, this: this})
       return retrieved.done === undefined ? yield* this.fromParent(n, process) : process();
     } catch (e) {
       if (!this._setDone(n, done, this.list)) return yield* wait(done[0]);
+      console.log(8, {n, err, from, to, this: this})
       this.list.status = null;
       return yield* this.handleError(n, e);
     } finally {
+      console.log(9, {n, err, from, to, this: this})
       this.donePromises[n] = undefined;
     }
   }, this.promiseCtr, this)();

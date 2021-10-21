@@ -1,5 +1,5 @@
 import { of } from 'rxvalue';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, isObservable } from 'rxjs';
 /**
  * Entity base class
  * @template T map of fields output types
@@ -38,15 +38,13 @@ export class EntityAbstract {
     }
 }
 export class LinkedBehaviorSubject extends BehaviorSubject {
-    link(value) {
-        this.unlink();
-        this._subs = value.subscribe(v => super.next(v));
-    }
     unlink() {
         this._subs?.unsubscribe();
     }
     next(v) {
         this.unlink();
+        if (isObservable(v))
+            this._subs = v.subscribe(() => { });
         super.next(v);
     }
 }

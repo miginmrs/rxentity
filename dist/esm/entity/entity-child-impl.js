@@ -1,4 +1,4 @@
-import { BehaviorSubject, identity } from "rxjs";
+import { BehaviorSubject, identity, isObservable } from "rxjs";
 import { EntityAbstract } from "./entity-abstract";
 import { map, of } from "rxvalue";
 import { $rx, $rxMap, $levelOf } from "./entity-proxies";
@@ -83,14 +83,19 @@ export class ChildEntityImpl extends EntityAbstract {
         const clone = alternMap(identity, {}, true);
         let subs;
         const unlink = () => subs?.unsubscribe();
-        const link = (v) => {
-            unlink();
-            subs = v.subscribe(x => next(x));
+        const next = (x) => {
+            let old = subs;
+            if (isObservable(x))
+                subs = x.subscribe(() => { });
+            old?.unsubscribe();
+            if (this._parent && rxSource.value === $rx(this._parent, k)) {
+                rxSource.next(new BehaviorSubject(x));
+            }
+            else {
+                rxSource.value.next(x);
+            }
         };
-        const next = (x) => this._parent && rxSource.value === $rx(this._parent, k)
-            ? rxSource.next(new BehaviorSubject(x))
-            : (unlink(), rxSource.value.next(x));
-        return Object.assign(rxSource.pipe(clone), { next, link, unlink });
+        return Object.assign(rxSource.pipe(clone), { next, unlink });
     }
     get parent() { return this._parent; }
     ;

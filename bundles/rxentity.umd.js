@@ -1577,16 +1577,14 @@ class EntityAbstract {
 }
 exports.EntityAbstract = EntityAbstract;
 class LinkedBehaviorSubject extends rxjs_1.BehaviorSubject {
-    link(value) {
-        this.unlink();
-        this._subs = value.subscribe(v => super.next(v));
-    }
     unlink() {
         var _a;
         (_a = this._subs) === null || _a === void 0 ? void 0 : _a.unsubscribe();
     }
     next(v) {
         this.unlink();
+        if (rxjs_1.isObservable(v))
+            this._subs = v.subscribe(() => { });
         super.next(v);
     }
 }
@@ -1692,14 +1690,19 @@ class ChildEntityImpl extends entity_abstract_1.EntityAbstract {
         const clone = altern_map_1.alternMap(rxjs_1.identity, {}, true);
         let subs;
         const unlink = () => subs === null || subs === void 0 ? void 0 : subs.unsubscribe();
-        const link = (v) => {
-            unlink();
-            subs = v.subscribe(x => next(x));
+        const next = (x) => {
+            let old = subs;
+            if (rxjs_1.isObservable(x))
+                subs = x.subscribe(() => { });
+            old === null || old === void 0 ? void 0 : old.unsubscribe();
+            if (this._parent && rxSource.value === entity_proxies_1.$rx(this._parent, k)) {
+                rxSource.next(new rxjs_1.BehaviorSubject(x));
+            }
+            else {
+                rxSource.value.next(x);
+            }
         };
-        const next = (x) => this._parent && rxSource.value === entity_proxies_1.$rx(this._parent, k)
-            ? rxSource.next(new rxjs_1.BehaviorSubject(x))
-            : (unlink(), rxSource.value.next(x));
-        return Object.assign(rxSource.pipe(clone), { next, link, unlink });
+        return Object.assign(rxSource.pipe(clone), { next, unlink });
     }
     get parent() { return this._parent; }
     ;
@@ -1948,16 +1951,22 @@ class AbstractStoredList {
             var _a, _b;
             let done = [];
             try {
+                console.log(1, { n, err, from, to, this: this });
                 if (!this._setDone(n, done, this.list))
                     return yield* common_1.wait(done[0]);
+                console.log(2, { n, err, from, to, this: this });
                 const oldList = n ? this.list.data : [];
                 [from, to] = [from || ((_a = oldList[0]) === null || _a === void 0 ? void 0 : _a.entity), to || ((_b = oldList[oldList.length - 1]) === null || _b === void 0 ? void 0 : _b.entity)];
                 const retrieved = yield* common_1.wait(this.retrieve(from, to, err));
+                console.log(3, { n, err, from, to, this: this, retrieved });
                 if (!this._setDone(n, done, this.list))
                     return yield* common_1.wait(done[0]);
+                console.log(4, { n, err, from, to, this: this });
                 const list = yield* common_1.wait(this._populate(retrieved.data));
+                console.log(5, { n, err, from, to, this: this });
                 if (!this._setDone(n, done, this.list))
                     return yield* common_1.wait(done[0]);
+                console.log(6, { n, err, from, to, this: this });
                 // if reload, unsubscribe from old entities
                 if (!n)
                     this.list.data.forEach(e => e.subscription.unsubscribe());
@@ -1968,15 +1977,18 @@ class AbstractStoredList {
                     this.subscriber.next({ list: this.list.data.map(e => e.entity), status: this.list.status });
                     return retrieved.done;
                 };
+                console.log(7, { n, err, from, to, this: this });
                 return retrieved.done === undefined ? yield* this.fromParent(n, process) : process();
             }
             catch (e) {
                 if (!this._setDone(n, done, this.list))
                     return yield* common_1.wait(done[0]);
+                console.log(8, { n, err, from, to, this: this });
                 this.list.status = null;
                 return yield* this.handleError(n, e);
             }
             finally {
+                console.log(9, { n, err, from, to, this: this });
                 this.donePromises[n] = undefined;
             }
         }, this.promiseCtr, this)();
@@ -2021,7 +2033,7 @@ class AbstractStoredList {
     toPromise(flowList) {
         const entitiesWithSubs = flowList.map(common_1.asAsync(function* (entitiesFlow) {
             const subscription = new rxjs_1.Subscription();
-            const entity = this.keys.asyncMapTo((k) => new this.promiseCtr(res => entitiesFlow[k].observable.subscribe(res)), this.promiseCtr);
+            const entity = this.keys.asyncMapTo((k) => new this.promiseCtr(res => subscription.add(entitiesFlow[k].observable.subscribe(res))), this.promiseCtr);
             return yield* common_1.wait(entity.then((entity) => ({ subscription, entity })));
         }, this.promiseCtr, this));
         return this.promiseCtr.all(entitiesWithSubs);

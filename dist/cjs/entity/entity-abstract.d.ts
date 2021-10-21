@@ -40,12 +40,10 @@ export declare type EntityFieldsMap<K extends string, T extends Rec<K>, V extend
     [k in K]: LinkedValuedSubject<T[k], V[k]>;
 };
 export declare type LinkedValuedSubject<T, V extends T = T> = ValuedSubject<T, V> & {
-    link: (value: Observable<V>) => void;
     unlink: () => void;
 };
 export declare class LinkedBehaviorSubject<T> extends BehaviorSubject<T> implements LinkedValuedSubject<T> {
     protected _subs?: Subscription;
-    link(value: Observable<T>): void;
     unlink(): void;
     next(v: T): void;
 }

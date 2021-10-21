@@ -42,15 +42,13 @@ class EntityAbstract {
 }
 exports.EntityAbstract = EntityAbstract;
 class LinkedBehaviorSubject extends rxjs_1.BehaviorSubject {
-    link(value) {
-        this.unlink();
-        this._subs = value.subscribe(v => super.next(v));
-    }
     unlink() {
         this._subs?.unsubscribe();
     }
     next(v) {
         this.unlink();
+        if (rxjs_1.isObservable(v))
+            this._subs = v.subscribe(() => { });
         super.next(v);
     }
 }

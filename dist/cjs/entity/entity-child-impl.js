@@ -86,14 +86,19 @@ class ChildEntityImpl extends entity_abstract_1.EntityAbstract {
         const clone = altern_map_1.alternMap(rxjs_1.identity, {}, true);
         let subs;
         const unlink = () => subs?.unsubscribe();
-        const link = (v) => {
-            unlink();
-            subs = v.subscribe(x => next(x));
+        const next = (x) => {
+            let old = subs;
+            if (rxjs_1.isObservable(x))
+                subs = x.subscribe(() => { });
+            old?.unsubscribe();
+            if (this._parent && rxSource.value === entity_proxies_1.$rx(this._parent, k)) {
+                rxSource.next(new rxjs_1.BehaviorSubject(x));
+            }
+            else {
+                rxSource.value.next(x);
+            }
         };
-        const next = (x) => this._parent && rxSource.value === entity_proxies_1.$rx(this._parent, k)
-            ? rxSource.next(new rxjs_1.BehaviorSubject(x))
-            : (unlink(), rxSource.value.next(x));
-        return Object.assign(rxSource.pipe(clone), { next, link, unlink });
+        return Object.assign(rxSource.pipe(clone), { next, unlink });
     }
     get parent() { return this._parent; }
     ;
