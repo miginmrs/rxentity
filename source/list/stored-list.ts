@@ -143,7 +143,11 @@ export abstract class AbstractStoredList<K extends string, ID extends Pick<any, 
   }
 
   exec(n: number, err: any, from?: Entities<K, KK, T, V, stores, impl>, to?: Entities<K, KK, T, V, stores, impl>): PromiseLike<ListStatus> {
-    return (this.donePromises[n] || (this.donePromises[n] = this._exec(n, err, from, to)));
+    let p = this.donePromises[n], done = false;
+    if (p) return p;
+    (p = this._exec(n, err, from, to)).then(() => done = true);
+    if (!done) this.donePromises[n] = p;
+    return p;
   }
 
   private _exec = (n: number, err: any, from?: Entities<K, KK, T, V, stores, impl>, to?: Entities<K, KK, T, V, stores, impl>): PromiseLike<ListStatus> => asAsync(function* () {
