@@ -2068,7 +2068,13 @@ class AbstractStoredList {
         return true;
     }
     exec(n, err, from, to) {
-        return (this.donePromises[n] || (this.donePromises[n] = this._exec(n, err, from, to)));
+        let p = this.donePromises[n], done = false;
+        if (p)
+            return p;
+        (p = this._exec(n, err, from, to)).then(() => done = true);
+        if (!done)
+            this.donePromises[n] = p;
+        return p;
     }
 }
 exports.AbstractStoredList = AbstractStoredList;
