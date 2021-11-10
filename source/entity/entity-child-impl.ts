@@ -19,7 +19,8 @@ export class ChildEntityImpl<K extends string, T extends Rec<K>, V extends T, P 
   private createRx<k extends K>(k: k): LinkedValuedSubject<T[k], V[k]> {
     const rxSource: ValuedSubject<ValuedSubject<T[k], V[k]>> = this.rxSource(k);
     const clone = alternMap<ValuedObservable<T[k]>, T[k]>(identity, {}, true);
-    let subs: Subscription;
+    const v = rxSource.value;
+    let subs = this._parent && v === $rx(this._parent, k) || !isObservable(v?.value) ? undefined : v.value.subscribe(() => { });
     const unlink = () => subs?.unsubscribe();
     const next = (x: V[k]) => {
       let old = subs;
@@ -38,7 +39,7 @@ export class ChildEntityImpl<K extends string, T extends Rec<K>, V extends T, P 
     return this.rxSourceMap[k] || (
       this.rxSourceMap[k] = new BehaviorSubject<ValuedSubject<T[k], V[k]>>(this._parent
         ? $rx(this._parent, k)
-        : new BehaviorSubject<V[k]>(undefined as any)
+        : new BehaviorSubject<V[k]>(undefined!)
       )
     );
   };
