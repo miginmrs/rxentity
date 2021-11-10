@@ -81,7 +81,8 @@ export class ChildEntityImpl extends EntityAbstract {
     createRx(k) {
         const rxSource = this.rxSource(k);
         const clone = alternMap(identity, {}, true);
-        let subs;
+        const v = rxSource.value;
+        let subs = this._parent && v === $rx(this._parent, k) || !isObservable(v?.value) ? undefined : v.value.subscribe(() => { });
         const unlink = () => subs?.unsubscribe();
         const next = (x) => {
             let old = subs;

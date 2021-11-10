@@ -29,22 +29,22 @@ class AbstractStoredList {
         this._exec = (n, err, from, to) => common_1.asAsync(function* () {
             let done = [];
             try {
-                console.log(1, { n, err, from, to, this: this });
+                this.log(1, { n, err, from, to, this: this });
                 if (!this._setDone(n, done, this.list))
                     return yield* common_1.wait(done[0]);
-                console.log(2, { n, err, from, to, this: this });
+                this.log(2, { n, err, from, to, this: this });
                 const oldList = n ? this.list.data : [];
                 [from, to] = [from || oldList[0]?.entity, to || oldList[oldList.length - 1]?.entity];
                 const retrieved = yield* common_1.wait(this.retrieve(from, to, err));
-                console.log(3, { n, err, from, to, this: this, retrieved });
+                this.log(3, { n, err, from, to, this: this, retrieved });
                 if (!this._setDone(n, done, this.list))
                     return yield* common_1.wait(done[0]);
-                console.log(4, { n, err, from, to, this: this });
+                this.log(4, { n, err, from, to, this: this });
                 const list = yield* common_1.wait(this._populate(retrieved.data));
-                console.log(5, { n, err, from, to, this: this });
+                this.log(5, { n, err, from, to, this: this });
                 if (!this._setDone(n, done, this.list))
                     return yield* common_1.wait(done[0]);
-                console.log(6, { n, err, from, to, this: this });
+                this.log(6, { n, err, from, to, this: this });
                 // if reload, unsubscribe from old entities
                 if (!n)
                     this.list.data.forEach(e => e.subscription.unsubscribe());
@@ -55,22 +55,22 @@ class AbstractStoredList {
                     this.subscriber.next({ list: this.list.data.map(e => e.entity), status: this.list.status });
                     return retrieved.done;
                 };
-                console.log(7, { n, err, from, to, this: this });
+                this.log(7, { n, err, from, to, this: this });
                 return retrieved.done === undefined ? yield* this.fromParent(n, process) : process();
             }
             catch (e) {
                 if (!this._setDone(n, done, this.list))
                     return yield* common_1.wait(done[0]);
-                console.log(8, { n, err, from, to, this: this });
+                this.log(8, { n, err, from, to, this: this });
                 this.list.status = null;
                 return yield* this.handleError(n, e);
             }
             finally {
-                console.log(9, { n, err, from, to, this: this });
+                this.log(9, { n, err, from, to, this: this });
                 this.donePromises[n] = undefined;
             }
         }, this.promiseCtr, this)();
-        const { key, merge, retrieve, keyof, keyofEntity, stores, promiseCtr } = params;
+        const { key, merge, retrieve, keyof, keyofEntity, stores, promiseCtr, log = rxjs_1.noop } = params;
         this.keyof = keyof;
         this.keyofEntity = keyofEntity;
         this.stores = stores;
@@ -79,6 +79,7 @@ class AbstractStoredList {
         this.key = key;
         this.merge = merge;
         this.promiseCtr = promiseCtr;
+        this.log = log;
     }
     add(entity) {
         const key = this.key;

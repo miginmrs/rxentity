@@ -21,6 +21,7 @@ export declare type Params<K extends string, ID extends Pick<any, K>, key extend
     keyofEntity: <k extends K>(k: k, data: Entity<KK[k], T[k], any, stores[k]>) => ID[k];
     merge: (key: key, list1: EntityWithSubscrition<K, KK, T, V, stores, impl>[], list2: EntityWithSubscrition<K, KK, T, V, stores, impl>[]) => EntityWithSubscrition<K, KK, T, V, stores, impl>[];
     promiseCtr: PromiseCtr;
+    log?: (...data: any[]) => void;
 };
 export declare abstract class AbstractStoredList<K extends string, ID extends Pick<any, K>, KK extends Record<K, string>, key extends K, T extends TRec<K, KK>, V extends T, impl extends AbstractEntities<K, KK, T, V, stores>, stores extends AbstractStores<K, ID, KK, T, V, stores, impl>> implements EntityList<K, ID, KK, T, V, stores, impl, key> {
     protected parentSubsctiption?: Subscription;
@@ -35,6 +36,7 @@ export declare abstract class AbstractStoredList<K extends string, ID extends Pi
         status: ListStatus;
     }> | null;
     private donePromises;
+    readonly log: (...data: any[]) => void;
     readonly key: key;
     readonly merge: (key: key, list1: EntityWithSubscrition<K, KK, T, V, stores, impl>[], list2: EntityWithSubscrition<K, KK, T, V, stores, impl>[]) => EntityWithSubscrition<K, KK, T, V, stores, impl>[];
     readonly keys: Keys<K>;

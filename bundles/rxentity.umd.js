@@ -1688,7 +1688,8 @@ class ChildEntityImpl extends entity_abstract_1.EntityAbstract {
     createRx(k) {
         const rxSource = this.rxSource(k);
         const clone = altern_map_1.alternMap(rxjs_1.identity, {}, true);
-        let subs;
+        const v = rxSource.value;
+        let subs = this._parent && v === entity_proxies_1.$rx(this._parent, k) || !rxjs_1.isObservable(v === null || v === void 0 ? void 0 : v.value) ? undefined : v.value.subscribe(() => { });
         const unlink = () => subs === null || subs === void 0 ? void 0 : subs.unsubscribe();
         const next = (x) => {
             let old = subs;
@@ -1951,22 +1952,22 @@ class AbstractStoredList {
             var _a, _b;
             let done = [];
             try {
-                console.log(1, { n, err, from, to, this: this });
+                this.log(1, { n, err, from, to, this: this });
                 if (!this._setDone(n, done, this.list))
                     return yield* common_1.wait(done[0]);
-                console.log(2, { n, err, from, to, this: this });
+                this.log(2, { n, err, from, to, this: this });
                 const oldList = n ? this.list.data : [];
                 [from, to] = [from || ((_a = oldList[0]) === null || _a === void 0 ? void 0 : _a.entity), to || ((_b = oldList[oldList.length - 1]) === null || _b === void 0 ? void 0 : _b.entity)];
                 const retrieved = yield* common_1.wait(this.retrieve(from, to, err));
-                console.log(3, { n, err, from, to, this: this, retrieved });
+                this.log(3, { n, err, from, to, this: this, retrieved });
                 if (!this._setDone(n, done, this.list))
                     return yield* common_1.wait(done[0]);
-                console.log(4, { n, err, from, to, this: this });
+                this.log(4, { n, err, from, to, this: this });
                 const list = yield* common_1.wait(this._populate(retrieved.data));
-                console.log(5, { n, err, from, to, this: this });
+                this.log(5, { n, err, from, to, this: this });
                 if (!this._setDone(n, done, this.list))
                     return yield* common_1.wait(done[0]);
-                console.log(6, { n, err, from, to, this: this });
+                this.log(6, { n, err, from, to, this: this });
                 // if reload, unsubscribe from old entities
                 if (!n)
                     this.list.data.forEach(e => e.subscription.unsubscribe());
@@ -1977,22 +1978,22 @@ class AbstractStoredList {
                     this.subscriber.next({ list: this.list.data.map(e => e.entity), status: this.list.status });
                     return retrieved.done;
                 };
-                console.log(7, { n, err, from, to, this: this });
+                this.log(7, { n, err, from, to, this: this });
                 return retrieved.done === undefined ? yield* this.fromParent(n, process) : process();
             }
             catch (e) {
                 if (!this._setDone(n, done, this.list))
                     return yield* common_1.wait(done[0]);
-                console.log(8, { n, err, from, to, this: this });
+                this.log(8, { n, err, from, to, this: this });
                 this.list.status = null;
                 return yield* this.handleError(n, e);
             }
             finally {
-                console.log(9, { n, err, from, to, this: this });
+                this.log(9, { n, err, from, to, this: this });
                 this.donePromises[n] = undefined;
             }
         }, this.promiseCtr, this)();
-        const { key, merge, retrieve, keyof, keyofEntity, stores, promiseCtr } = params;
+        const { key, merge, retrieve, keyof, keyofEntity, stores, promiseCtr, log = rxjs_1.noop } = params;
         this.keyof = keyof;
         this.keyofEntity = keyofEntity;
         this.stores = stores;
@@ -2001,6 +2002,7 @@ class AbstractStoredList {
         this.key = key;
         this.merge = merge;
         this.promiseCtr = promiseCtr;
+        this.log = log;
     }
     add(entity) {
         var _a;
