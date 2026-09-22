@@ -1,22 +1,16 @@
 {
   "compilerOptions": {
-    "declaration": false,
-    "importHelpers": false,
-    "lib": [
-      "esnext", "dom"
-    ],
-    "module": "commonjs",
-    "moduleResolution": "node",
-    "noEmitHelpers": false,
-    "outDir": "build",
-    "removeComments": false,
-    "skipLibCheck": true,
-    "sourceMap": false,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "strict": true,
-    "target": "esnext"
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noUnusedLocals": true,
+    "lib": ["ES2022"]
   },
-  "exclude": [],
-  "include": [
-    "source/**/*.ts"
-  ]
+  "include": ["source"]
 }

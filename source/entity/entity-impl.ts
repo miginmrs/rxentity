@@ -1,5 +1,4 @@
-import { Subscription } from "rxjs";
-import { Rec } from "..";
+import { Rec } from "../common";
 import { LinkedBehaviorSubject, EntityAbstract, EntityFieldsFct, EntityFieldsMap } from "./entity-abstract";
 
 /** 

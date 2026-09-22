@@ -1,9 +1,10 @@
-import { BehaviorSubject, identity, isObservable, Observable, Subscription } from "rxjs";
+import { BehaviorSubject, isObservable } from "rxjs";
 import { EntityFieldsFct, EntityFieldsMap, EntityAbstract, LinkedValuedSubject } from "./entity-abstract";
-import { ValuedSubject, map, of, ValuedObservable } from "rxvalue";
+import { type ValuedSubject, map, of, type ValuedObservable } from "../rx/valued";
 import { Entity, $rx, $rxMap, $levelOf } from "./entity-proxies";
-import { guard, Rec } from "../common";
-import { alternMap } from "altern-map";
+import { Rec } from "../common";
+import { alternMap } from "../rx/altern-map";
+import { on } from "../rx/on";
 
 /** 
  * Child entity class
@@ -18,7 +19,7 @@ export class ChildEntityImpl<K extends string, T extends Rec<K>, V extends T, P 
   };
   private createRx<k extends K>(k: k): LinkedValuedSubject<T[k], V[k]> {
     const rxSource: ValuedSubject<ValuedSubject<T[k], V[k]>> = this.rxSource(k);
-    const clone = alternMap<ValuedObservable<T[k]>, T[k]>(identity, {}, true);
+    const clone = on(rxSource).thru(alternMap((inner: ValuedSubject<T[k], V[k]>) => inner, {}, true)).go();
     const v = rxSource.value;
     let subs = this._parent && v === $rx(this._parent, k) || !isObservable(v?.value) ? undefined : v.value.subscribe(() => { });
     const unlink = () => subs?.unsubscribe();
@@ -32,7 +33,7 @@ export class ChildEntityImpl<K extends string, T extends Rec<K>, V extends T, P 
         rxSource.value.next(x)
       }
     }
-    return Object.assign(rxSource.pipe(clone), { next, unlink });
+    return Object.assign(clone, { next, unlink });
   }
   readonly rxMap: EntityFieldsMap<K, T, V>;
   private rxSource = <k extends K>(k: k) => {
@@ -124,8 +125,11 @@ export class ChildEntityImpl<K extends string, T extends Rec<K>, V extends T, P 
     });
   };
 
-  readonly levelOf = <SK extends K>(field: SK): ValuedObservable<number> => this.rxSource(field).pipe(alternMap(
-    (src: unknown) => src === this._parent?.[field] ? $levelOf(this._parent!, field).pipe(map(l => l + 1, 0, true)) : of(0),
-    {}, true
-  ));
+  readonly levelOf = <SK extends K>(field: SK): ValuedObservable<number> => on(this.rxSource(field)).thru(alternMap(
+    (src: unknown): ValuedObservable<number> => src === this._parent?.[field]
+      ? on($levelOf(this._parent!, field)).thru(map((level: number) => level + 1, 0, true)).go()
+      : of(0),
+    {},
+    true,
+  )).go();
 }

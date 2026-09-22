@@ -1,4 +1,4 @@
-import { alternMap } from "altern-map";
+import { alternMap } from "../rx/altern-map";
 import { Observable } from "rxjs";
 import { EntityAbstract, LinkedValuedSubject } from "./entity-abstract";
 import { Rec } from "../common";
@@ -14,11 +14,12 @@ export type Entity<K extends string, T extends Rec<K>, V extends T, S, E extends
   readonly [k in K]: LinkedValuedSubject<T[k], V[k]>
 };
 
-export function getEntity<K extends string, T extends Rec<K>, V extends T, S, E extends EntityAbstract<K, T, V, S>>(e: Entity<K, T, V, S, E>): E;
-export function getEntity<K extends string, T extends Rec<K>, V extends T, S, E extends EntityAbstract<K, T, V, S>>(e: Entity<K, T, V, S, E> | undefined): E | undefined;
-export function getEntity<K extends string, T extends Rec<K>, V extends T, S, E extends EntityAbstract<K, T, V, S>>(e?: Entity<K, T, V, S, E>): E | undefined {
+export function getEntity<E extends EntityAbstract<any, any, any, any>>(e: Entity<any, any, any, any, E>): E;
+export function getEntity(e: undefined): undefined;
+export function getEntity<E extends EntityAbstract<any, any, any, any>>(e: Entity<any, any, any, any, E> | undefined): E | undefined;
+export function getEntity(e?: Entity<any, any, any, any>): EntityAbstract<any, any, any, any> | undefined {
   if (!e) return;
-  return entities.get(e) as E;
+  return entities.get(e);
 }
 
 /** 
@@ -64,12 +65,19 @@ export const entityFlow = <K extends string, T extends Rec<K>, V extends T, S, E
  */
 export const toEntity = <K extends string, T extends Rec<K>, V extends T, S, E extends EntityAbstract<K, T, V, S>>(entity: EntityAbstract<K, T, V, S> & E) => {
   const proxy = new Proxy<Entity<K, T, V, S, E>>(Object.prototype as Entity<K, T, V, S, E>, {
-    get(_, key: K) {
-      return entity.rx(key);
+    get(_, key: string | symbol) {
+      return entity.rx(key as K);
+    },
+    has(_, key) {
+      return key in entity.rxMap;
     },
     ownKeys() {
-      return Object.keys(entity.rxMap)
-    }
+      return Reflect.ownKeys(entity.rxMap);
+    },
+    getOwnPropertyDescriptor(_, key) {
+      if (key in entity.rxMap) return { enumerable: true, configurable: true };
+      return undefined;
+    },
   });
   entities.set(proxy, entity);
   return proxy;

@@ -1,6 +1,6 @@
-import { Observable, TeardownLogic, Subscriber, Subscription, Subject, of } from 'rxjs';
+import { Observable, TeardownLogic, Subscriber, Subscription, Subject } from 'rxjs';
 import { PromiseCtr, Rec } from './common';
-import { EntityFlow, Entity, ChildEntityImpl, EntityImpl, entityFlow, toEntity, EntityAbstract, $rewind, $update, getEntity } from "./entity";
+import { EntityFlow, Entity, ChildEntityImpl, EntityImpl, entityFlow, toEntity, EntityAbstract, $update, getEntity } from "./entity/index";
 
 interface IStore<ID, K extends string, T extends Rec<K>, V extends T> {
   get(id: ID, skipCurrent?: true): EntityFlow<K, T, V, IStore<ID, K, T, V>>;
@@ -13,8 +13,14 @@ type Item<ID, K extends string, T extends Rec<K>, V extends T, S, impl extends E
 
 export abstract class AbstractStore<ID, K extends string, T extends Rec<K>, V extends T, S extends AbstractStore<ID, K, T, V, S, impl>, impl extends EntityAbstract<K, T, V, S>> implements IStore<ID, K, T, V> {
   protected _items = new Map<ID, Item<ID, K, T, V, S, impl>>();
-  readonly insersions = new Subject<ID[]>();
-  readonly emptyInsersions = new Subject<ID>();
+  /** Ids created by the latest {@link AbstractStore.next} or {@link AbstractStore.nextBulk}. */
+  readonly insertions = new Subject<ID[]>();
+  /** Original spelling of {@link AbstractStore.insertions}. */
+  readonly insersions = this.insertions;
+  /** Ids whose child record was created from a parent before it had local data. */
+  readonly emptyInsertions = new Subject<ID>();
+  /** Original spelling of {@link AbstractStore.emptyInsertions}. */
+  readonly emptyInsersions = this.emptyInsertions;
   constructor(
     readonly name: string,
     private finalize: (id: ID, entity: Entity<K, T, V, S, impl>) => void,
@@ -26,7 +32,7 @@ export abstract class AbstractStore<ID, K extends string, T extends Rec<K>, V ex
     getEntity(item?.entity)?.rewind();
   }
   /**
-   * Ensures the existance of an entity with a givin id using a givin construction logic
+   * Ensures an entity with the given id exists, using the given construction logic
    * @param id id of the item to be prepared
    * @param handler the asynchronous function to be executed in order to prepare the item
    * @returns an observable that holds the logic behind the entity construction
@@ -61,27 +67,28 @@ export abstract class AbstractStore<ID, K extends string, T extends Rec<K>, V ex
 
   nextBulk(items: { id: ID, data: V; }[]) {
     const insersions = items.filter(({ id, data }) => this._next(id, data)).map(({ id }) => id);
-    this.insersions.next(insersions);
+    this.insertions.next(insersions);
   }
 
   next(id: ID, data: V) {
-    if (this._next(id, data)) this.insersions.next([id]);
+    if (this._next(id, data)) this.insertions.next([id]);
   }
 
   private _next(id: ID, data: V) {
     const item = this._items.get(id);
     if (!item) return;
-    if (item.entity) {
-      $update(item.entity, data);
+    const existing = item.entity;
+    if (existing) {
+      $update(existing, data);
       item.ready = true;
       return false;
-    } else {
-      this.setItemEntity(id, data, item);
-      const entity = item.entity;
-      item.ready = true;
-      item.observers.forEach(subscriber => subscriber.next(entity));
-      return true;
     }
+    this.setItemEntity(id, data, item);
+    const entity = item.entity;
+    if (!entity) return;
+    item.ready = true;
+    item.observers.forEach(subscriber => subscriber.next(entity));
+    return true;
   }
 
   abstract setItemEntity(id: ID, data: V, item: Item<ID, K, T, V, S, impl>): void;
@@ -183,15 +190,22 @@ export class ChildStore<ID, K extends string, T extends Rec<K>, V extends T, P e
       let run = !skipCurrent;
       // this._entities.set will not be runned when .next is invoked because it will be already unsubscribed
       item.parentSubscription = this.parent.get(id).observable.subscribe(parent => {
-        item.entity = toEntity(new ChildEntityImpl<K, T, V, P, ChildStore<ID, K, T, V, P, pimpl, PS>, pimpl>({ data: {}, parent, ready: true, store: this }));
-        this.emptyInsersions.next(item.id);
-        if (run) observers.forEach(subscriber => subscriber.next(item.entity));
+        const entity = item.entity = toEntity(new ChildEntityImpl<K, T, V, P, ChildStore<ID, K, T, V, P, pimpl, PS>, pimpl>({ data: {}, parent, ready: true, store: this }));
+        this.emptyInsertions.next(item.id);
+        if (run) observers.forEach(subscriber => subscriber.next(entity));
       });
       run = true;
     }
   }
 }
 
+/**
+ * Root store.
+ *
+ * A record exists only while at least one subscriber holds `get(id)`.
+ * `next` delivers a record to those subscribers. When the last subscriber
+ * leaves, the record is dropped and `finalize` runs.
+ */
 export class TopStore<ID, K extends string, T extends Rec<K>, V extends T = T> extends AbstractStore<ID, K, T, V, TopStore<ID, K, T, V>, EntityImpl<K, T, V, TopStore<ID, K, T, V>>> {
   constructor(
     name: string,
@@ -208,4 +222,21 @@ export class TopStore<ID, K extends string, T extends Rec<K>, V extends T = T> e
 
   subscribeToParent() { }
 
+}
+
+/**
+ * A layer over a {@link TopStore}.
+ *
+ * Fields fall through to the parent until `update` writes a local value.
+ * `rewind` drops those local values and the fields follow the parent again.
+ */
+export function createChildStore<ID, K extends string, P extends Rec<K>>(
+  name: string,
+  parent: TopStore<ID, K, P>,
+  finalize?: (id: ID) => void,
+) {
+  type Impl = EntityImpl<K, P, P, TopStore<ID, K, P>>
+  return new ChildStore<ID, K, P, P, P, Impl, TopStore<ID, K, P>>(
+    name, finalize ?? (() => undefined), parent.promiseCtr, parent
+  );
 }

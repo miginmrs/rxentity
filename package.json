@@ -1,61 +1,68 @@
 {
   "name": "rxentity",
-  "version": "0.0.9",
-  "main": "./dist/cjs/index.js",
-  "module": "./dist/esm/index.js",
-  "source": "./source",
-  "sideEffects": false,
-  "scripts": {
-    "push": "yarn run dist && node inc-version.js && npm publish",
-    "test": "mocha -r ts-node/register test/**/*.ts",
-    "test:js": "mocha dist/cjs/test/**/*.js",
-    "test:js:debug": "mocha --inspect-brk dist/cjs/test/**/*.js",
-    "dist": "yarn run dist:clean && yarn run dist:build && yarn run dist:copy",
-    "dist:build": "yarn run dist:build:cjs && yarn run dist:build:esm && yarn run dist:build:bundle",
-    "dist:build:bundle": "webpack --config webpack.config.js && webpack --config webpack.config.js --env.production",
-    "dist:build:cjs": "tsc -p tsconfig-dist-cjs.json",
-    "dist:build:cjs:watch": "tsc -w -p tsconfig-dist-cjs.json",
-    "dist:build:esm": "tsc -p tsconfig-dist-esm.json",
-    "dist:clean": "rimraf dist && rimraf bundles/rxentity.* && mkdirp bundles",
-    "dist:copy": "cpy bundles/rxentity.* dist/bundles"
+  "version": "0.1.0",
+  "description": "RxJS stores of observable records, with inherited layers and weakly cached lists.",
+  "keywords": [
+    "rxjs",
+    "entity",
+    "store",
+    "observable",
+    "reactive",
+    "cache",
+    "pagination"
+  ],
+  "license": "ISC",
+  "engines": {
+    "node": ">=18"
   },
+  "author": "miginmrs",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/miginmrs/rxentity.git"
   },
-  "author": "miginmrs",
-  "license": "ISC",
   "bugs": {
     "url": "https://github.com/miginmrs/rxentity/issues"
   },
   "homepage": "https://github.com/miginmrs/rxentity#readme",
-  "directories": {
-    "lib": "lib"
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "LICENSE.txt",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.examples.json && tsc -p tsconfig.test.json",
+    "test": "npm run build && npm run typecheck && node --test \"examples/*.test.ts\" \"test/*.test.ts\"",
+    "prepublishOnly": "npm test",
+    "prepare": "npm run build"
   },
   "peerDependencies": {
-    "rxjs": ">=6.0.0"
+    "rxjs": ">=7.0.0 <8"
   },
-  "unpkg": "./bundles/rxentity.min.umd.js",
-  "description": "ReactiveX based library for using interactive entities and query-able lists (weakly stored) with multiple layers of accessibility",
   "devDependencies": {
-    "@types/bluebird": "^3.5.32",
-    "@types/chai": "^4.2.12",
-    "@types/mocha": "^8.0.2",
-    "bluebird": "^3.7.2",
-    "chai": "^4.2.0",
-    "cpy-cli": "^3.1.1",
-    "mocha": "^8.1.1",
-    "rimraf": "^3.0.2",
-    "rxjs": ">=6.0.0",
-    "ts-loader": "^8.0.1",
-    "ts-node": "^8.10.2",
-    "typescript": "^4.0.3",
-    "webpack": "^4.43.0",
-    "webpack-cli": "^3.3.12"
-  },
-  "keywords": [],
-  "dependencies": {
-    "altern-map": "miginmrs/altern-map#builds",
-    "rxvalue": "miginmrs/rxvalue#builds"
+    "@arethetypeswrong/core": "^0.18.5",
+    "@types/node": "^24.5.2",
+    "publint": "^0.3.24",
+    "rxjs": "^7.8.2",
+    "tsdown": "^0.23.0",
+    "typescript": "^5.9.2"
   }
 }

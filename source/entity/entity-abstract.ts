@@ -1,6 +1,6 @@
-import { Rec } from '..';
-import { ValuedSubject, of } from 'rxvalue';
-import { BehaviorSubject, isObservable, Observable, Subscription } from 'rxjs';
+import { Rec } from '../common';
+import { of, type ValuedSubject } from '../rx/valued';
+import { BehaviorSubject, isObservable, Subscription } from 'rxjs';
 
 
 /** 
@@ -10,13 +10,13 @@ import { BehaviorSubject, isObservable, Observable, Subscription } from 'rxjs';
  * @template S store type
  */
 export abstract class EntityAbstract<K extends string, T extends Rec<K>, V extends T, S> {
-  /** `function` that returns the `ValuedSubject` for the givin `field` */
+  /** `function` that returns the `ValuedSubject` for the given `field` */
   abstract readonly rx: EntityFieldsFct<K, T, V>;
   /** `map` that stores the `ValuedSubject` for all the entity `fields` */
   abstract readonly rxMap: Readonly<EntityFieldsMap<K, T, V>>;
   /** a `getter` snapshot for the *local* `fields` */
   abstract readonly local: Partial<Pick<T, K>>;
-  /** `function` that returns the `ValuedSubject` for the givin `field` */
+  /** `function` that returns the `ValuedSubject` for the given `field` */
 
   constructor(public readonly store: S) { }
 

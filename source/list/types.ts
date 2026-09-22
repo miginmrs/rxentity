@@ -1,6 +1,6 @@
 import type { Observable, Subscription } from 'rxjs';
 import { TRec } from '../common';
-import type { EntityFlow, Entity, EntityAbstract, ChildEntityImpl, EntityImpl } from '../entity';
+import type { EntityFlow, Entity, EntityAbstract, ChildEntityImpl, EntityImpl } from '../entity/index';
 import type { AbstractStore, ChildStore, TopStore } from '../store';
 
 export type Entities<K extends string, KK extends Record<K, string>, T extends TRec<K, KK>, V extends T, S extends Record<K, unknown>, impl extends { [k in K]: EntityAbstract<KK[k], T[k], V[k], S[k]> } = { [k in K]: EntityAbstract<KK[k], T[k], V[k], S[k]> }> = {
@@ -22,11 +22,11 @@ export type AbstractStores<K extends string, ID extends Pick<any, K>, KK extends
   = { [k in K]: AbstractStoresItem<K, ID, KK, T, V, S, impl, k> };
 
 /**
- * The status of the completude of the list:
- * * `true` means done
- * * `false` means there is more
- * * `undefined` means unknown state, need to check parent (temporary in general)
- * * `null` means erronous state, need to retry
+ * How complete a list is.
+ * * `true` — every page has been loaded
+ * * `false` — further pages are available
+ * * `undefined` — the child list does not know; ask the parent list
+ * * `null` — the last load failed
  */
 export type ListStatus = boolean | null | undefined;
 
